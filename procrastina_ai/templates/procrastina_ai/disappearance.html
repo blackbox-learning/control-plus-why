@@ -1,0 +1,124 @@
+{% extends "procrastina_ai/base.html" %}
+
+{% block pa_content %}
+<div class="disappearance-page">
+    <!-- Hidden Modal (triggers on page load) -->
+    <div id="disappearanceModal" class="modal-overlay modal-open">
+        <div class="modal-content">
+            <div class="modal-body">
+                <h2 class="modal-headline">You Vanished.</h2>
+                <p class="modal-subheadline">Where did you go?</p>
+
+                <form id="disappearanceForm" class="disappearance-form">
+                    <div class="options-grid">
+                        <label class="option-label">
+                            <input type="radio" name="disappearance" value="youtube" required>
+                            <span class="option-text">🎬 Watching YouTube</span>
+                        </label>
+                        <label class="option-label">
+                            <input type="radio" name="disappearance" value="laptops" required>
+                            <span class="option-text">💻 Looking At Laptops</span>
+                        </label>
+                        <label class="option-label">
+                            <input type="radio" name="disappearance" value="ai-tools" required>
+                            <span class="option-text">🤖 Researching AI Tools</span>
+                        </label>
+                        <label class="option-label">
+                            <input type="radio" name="disappearance" value="startup" required>
+                            <span class="option-text">🚀 Planning A Startup</span>
+                        </label>
+                        <label class="option-label">
+                            <input type="radio" name="disappearance" value="comments" required>
+                            <span class="option-text">💬 Reading Comments</span>
+                        </label>
+                        <label class="option-label">
+                            <input type="radio" name="disappearance" value="other" required>
+                            <span class="option-text">❓ Other</span>
+                        </label>
+                    </div>
+
+                    <div id="otherInput" class="other-input" style="display: none;">
+                        <input type="text" id="otherText" placeholder="Tell us where you really went..." maxlength="80">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-large">Submit</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Response Card (shown after submission) -->
+    <div id="responseContainer" style="display: none;">
+        <div class="response-page-content">
+            <h2>AI Assessment</h2>
+            <p class="response-subtitle">Based on your honesty...</p>
+
+            <div id="aiResponseCard" class="ai-response-card">
+                <!-- Response will be inserted here -->
+            </div>
+
+            <div class="response-actions">
+                <button class="btn btn-primary" onclick="location.reload()">Ask Again</button>
+                <a href="/projects/procrastina-ai/dashboard/" class="btn btn-secondary">Back to Dashboard</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const responses = {
+        youtube: "YouTube counts as research now. Your ability to justify this is admirable. Session logged and approved.",
+        laptops: "Your current laptop remains fully capable. The 27th option you viewed was 0.3% better. Research denied, but effort noted.",
+        'ai-tools': "Researching AI tools to help you work. Ironically, this is now your primary activity. Recursive procrastination unlocked.",
+        startup: "A new startup idea. Excellent. Have you considered finishing the last one first? No? Okay, planning approved.",
+        comments: "Reading comments. Democracy in action. Your political opinions have been upgraded 3 times. Productivity: untouched.",
+        other: "Your custom answer was creative. The AI appreciates the honesty. You've earned a 30-minute extension on your disappearance."
+    };
+
+    document.getElementById('disappearanceForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const selected = document.querySelector('input[name="disappearance"]:checked').value;
+        let reason = selected;
+        
+        if (selected === 'other') {
+            reason = document.getElementById('otherText').value || 'Something mysterious';
+        }
+
+        // Get the response
+        let response = responses[selected];
+        if (selected === 'other' && document.getElementById('otherText').value) {
+            response = `You said: "${document.getElementById('otherText').value}". The AI has no comment. Well done.`;
+        }
+
+        // Show response
+        const modal = document.getElementById('disappearanceModal');
+        const container = document.getElementById('responseContainer');
+        const card = document.getElementById('aiResponseCard');
+
+        modal.style.display = 'none';
+        
+        card.innerHTML = `
+            <div class="response-text">
+                <p>"${response}"</p>
+            </div>
+        `;
+
+        container.style.display = 'block';
+        window.scrollTo(0, 0);
+    });
+
+    // Toggle "Other" input visibility
+    document.querySelectorAll('input[name="disappearance"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            const otherInput = document.getElementById('otherInput');
+            if (this.value === 'other') {
+                otherInput.style.display = 'block';
+                document.getElementById('otherText').focus();
+            } else {
+                otherInput.style.display = 'none';
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "home/base.html" %}
+
+{% block title %}ProcrastinaAI — How can I procrastinate more efficiently?{% endblock %}
+
+{% block content %}
+{% load static %}
+<link rel="stylesheet" href="{% static 'procrastina_ai/style.css' %}">
+<script defer src="{% static 'procrastina_ai/script.js' %}"></script>
+
+<div class="pa-container">
+    {% block pa_content %}{% endblock %}
+</div>
+
+{% endblock %}

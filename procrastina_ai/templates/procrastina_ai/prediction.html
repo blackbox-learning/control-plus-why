@@ -1,0 +1,105 @@
+{% extends "procrastina_ai/base.html" %}
+
+{% block pa_content %}
+<div class="prediction-container">
+    <h2>Your Procrastination Journey</h2>
+    <p class="subtitle">AI has foreseen your delay with startling accuracy.</p>
+
+    <!-- Confidence Meter -->
+    <div class="confidence-card">
+        <div class="confidence-header">
+            <span>Prediction Confidence</span>
+            <span class="confidence-value">94%</span>
+        </div>
+        <div class="confidence-bar">
+            <div class="confidence-fill" style="width: 94%"></div>
+        </div>
+        <p class="confidence-text">Frighteningly accurate.</p>
+    </div>
+
+    <!-- Timeline Journey -->
+    <div class="timeline-journey">
+        <div class="journey-step">
+            <div class="step-marker">
+                <span class="step-number">1</span>
+            </div>
+            <div class="step-content">
+                <h3>Edit Video</h3>
+                <p>You open the project with determination.</p>
+            </div>
+        </div>
+
+        <div class="journey-connector"></div>
+
+        <div class="journey-step">
+            <div class="step-marker">
+                <span class="step-number">2</span>
+            </div>
+            <div class="step-content">
+                <h3>Need Inspiration</h3>
+                <p>"I just need to find the right vibe first..."</p>
+            </div>
+        </div>
+
+        <div class="journey-connector"></div>
+
+        <div class="journey-step">
+            <div class="step-marker">
+                <span class="step-number">3</span>
+            </div>
+            <div class="step-content">
+                <h3>Open YouTube</h3>
+                <p>"Just one quick tutorial."</p>
+            </div>
+        </div>
+
+        <div class="journey-connector"></div>
+
+        <div class="journey-step">
+            <div class="step-marker">
+                <span class="step-number">4</span>
+            </div>
+            <div class="step-content">
+                <h3>Watch Tutorial</h3>
+                <p>45 minutes pass. You're in a rabbit hole.</p>
+            </div>
+        </div>
+
+        <div class="journey-connector"></div>
+
+        <div class="journey-step">
+            <div class="step-marker">
+                <span class="step-number">5</span>
+            </div>
+            <div class="step-content">
+                <h3>Research Cameras</h3>
+                <p>"Maybe I need better gear for this project."</p>
+            </div>
+        </div>
+
+        <div class="journey-connector"></div>
+
+        <div class="journey-step final">
+            <div class="step-marker final-marker">
+                <span class="step-emoji">💀</span>
+            </div>
+            <div class="step-content">
+                <h3>Forget Editing Exists</h3>
+                <p>You close your laptop, mission accomplished.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Warning -->
+    <div class="ai-warning">
+        <span class="warning-icon">⚠️</span>
+        <div>
+            <h3>AI Warning</h3>
+            <p>"You will spend 3 hours online. You will tell yourself you're 'researching.' You won't edit a single frame. This is not a prediction—this is destiny."</p>
+        </div>
+    </div>
+
+    <!-- CTA -->
+    <button class="btn btn-primary btn-large">Accept My Fate</button>
+</div>
+{% endblock %}

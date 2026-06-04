@@ -1,0 +1,150 @@
+{% extends "procrastina_ai/base.html" %}
+
+{% block pa_content %}
+<div class="dashboard-header">
+    <h2>Dashboard</h2>
+    <p class="subtitle">Your procrastination headquarters.</p>
+</div>
+
+<!-- Top Stats -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-label">Today's Tasks</div>
+        <div class="stat-value">4</div>
+        <div class="stat-subtitle">Waiting to be ignored</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Procrastination Score</div>
+        <div class="stat-value">87</div>
+        <div class="stat-subtitle">You're crushing it</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Missing Events</div>
+        <div class="stat-value">2</div>
+        <div class="stat-subtitle">Oops.</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">AI Roasts Generated</div>
+        <div class="stat-value">12</div>
+        <div class="stat-subtitle">Felt personally attacked</div>
+    </div>
+</div>
+
+<!-- Main Content Grid -->
+<div class="dashboard-grid">
+    <!-- Tasks Section -->
+    <div class="dashboard-section">
+        <h3 class="section-title">Today's Tasks</h3>
+        <div class="task-list">
+            <div class="task-item">
+                <span class="task-icon">📝</span>
+                <div class="task-text">
+                    <p class="task-name">Finish project report</p>
+                    <p class="task-time">Due: 5:00 PM</p>
+                </div>
+            </div>
+            <div class="task-item">
+                <span class="task-icon">📧</span>
+                <div class="task-text">
+                    <p class="task-name">Reply to emails</p>
+                    <p class="task-time">Overdue by 2 days</p>
+                </div>
+            </div>
+            <div class="task-item">
+                <span class="task-icon">🎨</span>
+                <div class="task-text">
+                    <p class="task-name">Design mockups</p>
+                    <p class="task-time">Due: Tomorrow</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Excuses -->
+    <div class="dashboard-section">
+        <h3 class="section-title">Recent Excuses</h3>
+        <div class="excuse-list">
+            <div class="excuse-item">
+                <span class="excuse-emoji">😺</span>
+                <p>My cat needed a pep talk</p>
+            </div>
+            <div class="excuse-item">
+                <span class="excuse-emoji">☕</span>
+                <p>Coffee break extended by 3 hours</p>
+            </div>
+            <div class="excuse-item">
+                <span class="excuse-emoji">🎵</span>
+                <p>Found the perfect playlist first</p>
+            </div>
+            <div class="excuse-item">
+                <span class="excuse-emoji">📱</span>
+                <p>Had to check my phone 47 times</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI Responses -->
+    <div class="dashboard-section wide">
+        <h3 class="section-title">Recent AI Responses</h3>
+        <div class="ai-response-box">
+            <div class="response-header">AI Observation</div>
+            <p class="response-text">"You opened your task list, looked at it for 3 seconds, and immediately switched to YouTube. That's new. Not really, but the commitment is admirable."</p>
+        </div>
+        <div class="ai-response-box">
+            <div class="response-header">AI Prediction</div>
+            <p class="response-text">"Based on your current trajectory, you will spend exactly 6 more hours avoiding work, then panic at 11 PM and question your life choices."</p>
+        </div>
+    </div>
+
+    <!-- Disappearance Count -->
+    <div class="dashboard-section">
+        <h3 class="section-title">Disappearance Count</h3>
+        <div class="disappearance-stat">
+            <div class="big-number">7</div>
+            <p class="big-label">Times motivation vanished</p>
+            <p class="disappearance-msg">It usually returns around 11:45 PM.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Floating Notifications Container -->
+<div id="notifications-container" class="notifications-container"></div>
+
+<script>
+// Sarcastic notifications that appear randomly
+const notifications = [
+    "Still procrastinating? That's the spirit!",
+    "Your tasks called. You didn't answer.",
+    "Plot twist: You actually finish something.",
+    "Productivity is overrated anyway.",
+    "The deadline is your best friend. Lie to yourself.",
+    "You're not late, you're 'fashionably delayed.'",
+    "AI prediction: You'll read this instead of working.",
+    "Congratulations! You've unlocked: Midnight Panic Mode."
+];
+
+function showNotification(text) {
+    const container = document.getElementById('notifications-container');
+    const notif = document.createElement('div');
+    notif.className = 'notification';
+    notif.textContent = text;
+    
+    container.appendChild(notif);
+    
+    setTimeout(() => {
+        notif.classList.add('show');
+    }, 100);
+    
+    setTimeout(() => {
+        notif.classList.remove('show');
+        setTimeout(() => notif.remove(), 300);
+    }, 4000);
+}
+
+// Show a random notification on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const randomNotif = notifications[Math.floor(Math.random() * notifications.length)];
+    setTimeout(() => showNotification(randomNotif), 500);
+});
+</script>
+{% endblock %}

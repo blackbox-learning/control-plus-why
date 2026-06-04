@@ -1,0 +1,145 @@
+{% extends "procrastina_ai/base.html" %}
+
+{% block pa_content %}
+<div class="funny-container">
+    <div class="funny-header">
+        <h2>Funny Reasons for Unfinished Tasks</h2>
+        <p class="funny-subtitle">AI-generated excuses that are (almost) believable.</p>
+    </div>
+
+    <!-- Task Card 1: Video Recording -->
+    <div class="reason-card">
+        <div class="card-header">
+            <h3 class="task-title">📹 Video Recording</h3>
+        </div>
+        
+        <div class="reasons-list">
+            <div class="reason-item">
+                <span class="reason-bullet">•</span>
+                <p>The camera and I had creative differences.</p>
+            </div>
+            <div class="reason-item">
+                <span class="reason-bullet">•</span>
+                <p>The lighting was ready. I wasn't.</p>
+            </div>
+            <div class="reason-item">
+                <span class="reason-bullet">•</span>
+                <p>Production delayed due to insufficient cinematic energy.</p>
+            </div>
+        </div>
+
+        <div class="card-actions">
+            <button class="btn-icon" title="Copy reasons" onclick="copyToClipboard(this, 'Video Recording reasons')">
+                <span>📋</span> Copy
+            </button>
+            <button class="btn-icon" title="Regenerate reasons">
+                <span>🔄</span> Regenerate
+            </button>
+        </div>
+    </div>
+
+    <!-- Task Card 2: Cold Calls -->
+    <div class="reason-card">
+        <div class="card-header">
+            <h3 class="task-title">☎️ Cold Calls</h3>
+        </div>
+        
+        <div class="reasons-list">
+            <div class="reason-item">
+                <span class="reason-bullet">•</span>
+                <p>Waiting for leads to become warm leads.</p>
+            </div>
+            <div class="reason-item">
+                <span class="reason-bullet">•</span>
+                <p>Confidence package failed to install.</p>
+            </div>
+        </div>
+
+        <div class="card-actions">
+            <button class="btn-icon" title="Copy reasons" onclick="copyToClipboard(this, 'Cold Calls reasons')">
+                <span>📋</span> Copy
+            </button>
+            <button class="btn-icon" title="Regenerate reasons">
+                <span>🔄</span> Regenerate
+            </button>
+        </div>
+    </div>
+
+    <!-- Task Card 3: Email Marketing Campaign -->
+    <div class="reason-card">
+        <div class="card-header">
+            <h3 class="task-title">📧 Email Marketing Campaign</h3>
+        </div>
+        
+        <div class="reasons-list">
+            <div class="reason-item">
+                <span class="reason-bullet">•</span>
+                <p>Subject lines require 47 more A/B test variations.</p>
+            </div>
+            <div class="reason-item">
+                <span class="reason-bullet">•</span>
+                <p>Waiting for inspiration to arrive via email first.</p>
+            </div>
+            <div class="reason-item">
+                <span class="reason-bullet">•</span>
+                <p>The metrics told me they need to marinate a bit longer.</p>
+            </div>
+        </div>
+
+        <div class="card-actions">
+            <button class="btn-icon" title="Copy reasons" onclick="copyToClipboard(this, 'Email Marketing reasons')">
+                <span>📋</span> Copy
+            </button>
+            <button class="btn-icon" title="Regenerate reasons">
+                <span>🔄</span> Regenerate
+            </button>
+        </div>
+    </div>
+
+    <!-- Task Card 4: Bug Fixes -->
+    <div class="reason-card">
+        <div class="card-header">
+            <h3 class="task-title">🐛 Bug Fixes</h3>
+        </div>
+        
+        <div class="reasons-list">
+            <div class="reason-item">
+                <span class="reason-bullet">•</span>
+                <p>The bugs are actually features in disguise.</p>
+            </div>
+            <div class="reason-item">
+                <span class="reason-bullet">•</span>
+                <p>Users will eventually adapt to the current behavior.</p>
+            </div>
+            <div class="reason-item">
+                <span class="reason-bullet">•</span>
+                <p>Need to understand the root cause of procrastination first.</p>
+            </div>
+        </div>
+
+        <div class="card-actions">
+            <button class="btn-icon" title="Copy reasons" onclick="copyToClipboard(this, 'Bug Fixes reasons')">
+                <span>📋</span> Copy
+            </button>
+            <button class="btn-icon" title="Regenerate reasons">
+                <span>🔄</span> Regenerate
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyToClipboard(button, text) {
+    navigator.clipboard.writeText(text).then(() => {
+        const originalText = button.textContent;
+        button.textContent = '✓ Copied';
+        button.style.opacity = '0.7';
+        
+        setTimeout(() => {
+            button.textContent = originalText;
+            button.style.opacity = '1';
+        }, 2000);
+    });
+}
+</script>
+{% endblock %}

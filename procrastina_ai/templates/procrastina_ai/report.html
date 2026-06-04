@@ -1,0 +1,103 @@
+{% extends "procrastina_ai/base.html" %}
+
+{% block pa_content %}
+<div class="report-container">
+    <div class="report-header">
+        <h2>Today's Adventure Report</h2>
+        <p class="report-date">June 4, 2026</p>
+    </div>
+
+    <!-- Today's Adventure -->
+    <section class="report-section adventure-section">
+        <h3 class="section-title">Today's Adventure</h3>
+        
+        <div class="adventure-item">
+            <span class="adventure-label">Started with:</span>
+            <span class="adventure-task">📝 Finish Client Website</span>
+        </div>
+
+        <div class="adventure-item">
+            <span class="adventure-label">Unexpected Turns:</span>
+            <div class="turns-list">
+                <div class="turn-item">✓ Compared 27 Laptops</div>
+                <div class="turn-item">✓ Watched 14 Videos</div>
+                <div class="turn-item">✓ Opened 63 Tabs</div>
+            </div>
+        </div>
+
+        <div class="adventure-item">
+            <span class="adventure-label">Actual Progress:</span>
+            <div class="progress-box">
+                <div class="progress-title">Homepage 80% Complete</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 80%"></div>
+                </div>
+                <span class="progress-note">You're so close. Then you left.</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Procrastination Analytics -->
+    <section class="report-section analytics-section">
+        <h3 class="section-title">Procrastination Analytics</h3>
+        
+        <div class="analytics-grid">
+            <div class="analytics-card">
+                <div class="analytics-label">Tasks Planned</div>
+                <div class="analytics-value">4</div>
+            </div>
+            <div class="analytics-card">
+                <div class="analytics-label">Tasks Completed</div>
+                <div class="analytics-value">1</div>
+            </div>
+            <div class="analytics-card">
+                <div class="analytics-label">Disappearances</div>
+                <div class="analytics-value">7</div>
+            </div>
+            <div class="analytics-card">
+                <div class="analytics-label">Most Common Excuse</div>
+                <div class="analytics-value-text">"Need coffee"</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Achievements -->
+    <section class="report-section achievements-section">
+        <h3 class="section-title">Today's Achievements</h3>
+        
+        <div class="achievements-grid">
+            <div class="achievement-badge">
+                <span class="achievement-emoji">🏆</span>
+                <p class="achievement-name">Opened 50 Tabs</p>
+            </div>
+            <div class="achievement-badge">
+                <span class="achievement-emoji">🔍</span>
+                <p class="achievement-name">Professional Researcher</p>
+            </div>
+            <div class="achievement-badge">
+                <span class="achievement-emoji">👑</span>
+                <p class="achievement-name">Elite Procrastinator</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- AI Summary -->
+    <section class="report-section summary-section">
+        <div class="ai-summary-card">
+            <div class="ai-summary-header">
+                <span class="ai-icon">🤖</span>
+                <span>AI Summary</span>
+            </div>
+            <p class="ai-summary-text">
+                "You attempted to build a website. You accidentally became a laptop consultant. By the way, did you know the 27th laptop model has a really good display? You do now."
+            </p>
+        </div>
+    </section>
+
+    <!-- Export / Share -->
+    <div class="report-actions">
+        <button class="btn btn-primary">Export as PDF</button>
+        <button class="btn btn-secondary">Share Report</button>
+    </div>
+</div>
+{% endblock %}

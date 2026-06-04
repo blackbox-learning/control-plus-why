@@ -20,4 +20,7 @@ from django.urls import path, include
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('home.urls')),
+    
+    # ProcrastinaAI project routes
+    path('projects/procrastina-ai/', include('procrastina_ai.urls')),
 ]

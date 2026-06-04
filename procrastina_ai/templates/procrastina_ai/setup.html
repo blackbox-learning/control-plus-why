@@ -1,0 +1,53 @@
+{% extends "procrastina_ai/base.html" %}
+
+{% block pa_content %}
+<div class="setup-container">
+    <div class="setup-card">
+        <h2>Setup Your Procrastination Profile</h2>
+        <p class="subtitle">Tell us about your day so we can predict your delay with accuracy.</p>
+
+        <form class="setup-form" method="post" id="setupForm">
+            {% csrf_token %}
+
+            <!-- Tasks Section -->
+            <div class="form-section">
+                <label class="section-label">Today's Tasks</label>
+                <input type="text" name="tasks" class="input-field" placeholder="What are you avoiding? (comma-separated)" required>
+            </div>
+
+            <!-- Mood Section -->
+            <div class="form-section">
+                <label class="section-label">How's Your Vibe?</label>
+                <div class="chip-group" id="moodGroup">
+                    <input type="hidden" name="mood" id="moodInput" value="">
+                    <button type="button" class="chip" data-value="motivated" data-group="mood">Motivated</button>
+                    <button type="button" class="chip" data-value="sleepy" data-group="mood">Sleepy</button>
+                    <button type="button" class="chip" data-value="burned-out" data-group="mood">Burned Out</button>
+                    <button type="button" class="chip" data-value="lazy" data-group="mood">Lazy</button>
+                    <button type="button" class="chip" data-value="existential" data-group="mood">Existential Crisis</button>
+                </div>
+                <input type="text" name="mood_custom" class="input-field" placeholder="Or describe your vibe...">
+            </div>
+
+            <!-- Interests Section -->
+            <div class="form-section">
+                <label class="section-label">Your Distractions</label>
+                <div class="chip-group" id="interestGroup">
+                    <input type="hidden" name="interests" id="interestInput" value="">
+                    <button type="button" class="chip" data-value="youtube" data-group="interest">YouTube</button>
+                    <button type="button" class="chip" data-value="ai" data-group="interest">AI</button>
+                    <button type="button" class="chip" data-value="tech" data-group="interest">Tech</button>
+                    <button type="button" class="chip" data-value="gaming" data-group="interest">Gaming</button>
+                    <button type="button" class="chip" data-value="instagram" data-group="interest">Instagram</button>
+                    <button type="button" class="chip" data-value="movies" data-group="interest">Movies</button>
+                    <button type="button" class="chip" data-value="startups" data-group="interest">Startups</button>
+                </div>
+                <input type="text" name="interests_custom" class="input-field" placeholder="Add custom distractions...">
+            </div>
+
+            <!-- CTA Button -->
+            <button type="submit" class="btn btn-primary btn-large">Start My Day</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
