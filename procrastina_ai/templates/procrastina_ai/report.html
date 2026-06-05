@@ -1,103 +1,384 @@
 {% extends "procrastina_ai/base.html" %}
 
+{% block pa_nav %}
+<a href="/projects/procrastina-ai/" class="pa-nav-link">Home</a>
+<a href="/projects/procrastina-ai/dashboard/" class="pa-nav-link">Dashboard</a>
+{% endblock %}
+
+{% block pa_mobile_nav %}
+<a href="/projects/procrastina-ai/">Home</a>
+<a href="/projects/procrastina-ai/dashboard/">Dashboard</a>
+<a href="/projects/procrastina-ai/setup/">Start New Day</a>
+{% endblock %}
+
 {% block pa_content %}
-<div class="report-container">
-    <div class="report-header">
-        <h2>Today's Adventure Report</h2>
-        <p class="report-date">June 4, 2026</p>
+<div class="report-wrap">
+
+    <!-- Report Gated (shown if session still active) -->
+    <div id="reportGated" class="report-gated" style="display:none;">
+        <div class="report-gated-icon">🔒</div>
+        <h2>Your day is still running.</h2>
+        <p>Finish your procrastination journey first. Hit "Stop My Day" on the dashboard to unlock your report.</p>
+        <a href="/projects/procrastina-ai/dashboard/" class="btn btn-primary">Back to Dashboard</a>
     </div>
 
-    <!-- Today's Adventure -->
-    <section class="report-section adventure-section">
-        <h3 class="section-title">Today's Adventure</h3>
-        
-        <div class="adventure-item">
-            <span class="adventure-label">Started with:</span>
-            <span class="adventure-task">📝 Finish Client Website</span>
-        </div>
-
-        <div class="adventure-item">
-            <span class="adventure-label">Unexpected Turns:</span>
-            <div class="turns-list">
-                <div class="turn-item">✓ Compared 27 Laptops</div>
-                <div class="turn-item">✓ Watched 14 Videos</div>
-                <div class="turn-item">✓ Opened 63 Tabs</div>
+    <div id="reportMain">
+        <div class="report-head">
+            <h2>Your Daily Report</h2>
+            <p class="report-date" id="reportDate"></p>
+            <div class="session-closed-badge" id="sessionBadge" style="display:none;">
+                <span>✓</span> Session Closed — You survived another day.
             </div>
         </div>
 
-        <div class="adventure-item">
-            <span class="adventure-label">Actual Progress:</span>
-            <div class="progress-box">
-                <div class="progress-title">Homepage 80% Complete</div>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: 80%"></div>
+        <div id="reportLoading">
+            <div class="loading-state">
+                <div class="loading-dots"><span></span><span></span><span></span></div>
+                <p>Calculating your shame...</p>
+            </div>
+        </div>
+
+        <div id="reportContent" style="display:none;">
+            <!-- Activity Metrics (Real Data) -->
+            <div class="time-hero">
+                <div class="time-hero-value" id="sessionLength">—</div>
+                <div class="time-hero-label">Session Length</div>
+            </div>
+
+            <!-- Activity Breakdown -->
+            <div class="report-card" id="activityCard">
+                <div class="report-card-title">Activity Breakdown</div>
+                <div id="insufficientData" style="display:none; text-align:center; padding:1.5rem;">
+                    <p style="color:var(--text-muted); font-style:italic;">Not enough activity data collected.</p>
+                    <p style="color:var(--text-dim); font-size:0.8rem; margin-top:0.5rem;">The tracker may not have been running long enough to record meaningful metrics.</p>
                 </div>
-                <span class="progress-note">You're so close. Then you left.</span>
+                <div class="analytics-grid" id="activityGrid">
+                    <div class="analytics-card">
+                        <div class="analytics-label">Active Time</div>
+                        <div class="analytics-num" id="aActiveTime">—</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-label">Idle Time</div>
+                        <div class="analytics-num" id="aIdleTime">—</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-label">Distractions Logged</div>
+                        <div class="analytics-num" id="aDistracted">0</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-label">Tasks Planned</div>
+                        <div class="analytics-num" id="aPlanned">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Desktop Agent: Top Applications (shown only with activity data) -->
+            <div class="report-card" id="topAppsCard" style="display:none;">
+                <div class="report-card-title">Top Applications</div>
+                <div id="topAppsList"></div>
+            </div>
+
+            <!-- Desktop Agent: Category Breakdown (shown only with activity data) -->
+            <div class="report-card" id="categoryCard" style="display:none;">
+                <div class="report-card-title">Category Breakdown</div>
+                <div id="categoryList"></div>
+            </div>
+
+            <!-- Desktop Agent: Idle Summary (shown only with activity data) -->
+            <div class="report-card" id="idleCard" style="display:none;">
+                <div class="report-card-title">Idle Summary</div>
+                <div id="idleList"></div>
+            </div>
+
+            <!-- What Actually Happened -->
+            <div class="report-card">
+                <div class="report-card-title">What Actually Happened</div>
+                <div id="adventureList"></div>
+            </div>
+
+            <!-- Desktop Agent: Activity Timeline (shown only with activity data) -->
+            <div class="report-card" id="timelineCard" style="display:none;">
+                <div class="report-card-title">Activity Timeline</div>
+                <div id="timelineList"></div>
+            </div>
+
+            <!-- Score -->
+            <div class="report-card" style="text-align:center;">
+                <div class="score-num" id="bigScore">0</div>
+                <div class="score-label">Procrastination Score / 100</div>
+            </div>
+
+            <!-- Achievements -->
+            <div class="report-card">
+                <div class="report-card-title">Achievements</div>
+                <div class="achievements-grid" id="achievementsGrid"></div>
+            </div>
+
+            <!-- AI Summary -->
+            <div class="report-card">
+                <div class="ai-summary-card">
+                    <div class="ai-summary-head"><span>🤖</span> AI Verdict</div>
+                    <p class="ai-summary-text" id="aiSummaryText">Generating...</p>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="report-actions">
+                <a href="/projects/procrastina-ai/funny-reasons/" class="btn btn-primary">Funny Reasons</a>
+                <a href="/projects/procrastina-ai/setup/" class="btn btn-secondary">New Day</a>
+                <a href="/projects/procrastina-ai/dashboard/" class="btn btn-secondary">Dashboard</a>
+                <button class="btn btn-secondary" onclick="copyReport()">Copy</button>
             </div>
         </div>
-    </section>
+    </div>
 
-    <!-- Procrastination Analytics -->
-    <section class="report-section analytics-section">
-        <h3 class="section-title">Procrastination Analytics</h3>
-        
-        <div class="analytics-grid">
-            <div class="analytics-card">
-                <div class="analytics-label">Tasks Planned</div>
-                <div class="analytics-value">4</div>
-            </div>
-            <div class="analytics-card">
-                <div class="analytics-label">Tasks Completed</div>
-                <div class="analytics-value">1</div>
-            </div>
-            <div class="analytics-card">
-                <div class="analytics-label">Disappearances</div>
-                <div class="analytics-value">7</div>
-            </div>
-            <div class="analytics-card">
-                <div class="analytics-label">Most Common Excuse</div>
-                <div class="analytics-value-text">"Need coffee"</div>
-            </div>
+    <div id="noSession" style="display:none;">
+        <div class="error-state">
+            <h3>No active session.</h3>
+            <p>Set up first.</p>
+            <a href="/projects/procrastina-ai/setup/" class="btn btn-primary" style="margin-top:1rem;">Start Setup</a>
         </div>
-    </section>
-
-    <!-- Achievements -->
-    <section class="report-section achievements-section">
-        <h3 class="section-title">Today's Achievements</h3>
-        
-        <div class="achievements-grid">
-            <div class="achievement-badge">
-                <span class="achievement-emoji">🏆</span>
-                <p class="achievement-name">Opened 50 Tabs</p>
-            </div>
-            <div class="achievement-badge">
-                <span class="achievement-emoji">🔍</span>
-                <p class="achievement-name">Professional Researcher</p>
-            </div>
-            <div class="achievement-badge">
-                <span class="achievement-emoji">👑</span>
-                <p class="achievement-name">Elite Procrastinator</p>
-            </div>
-        </div>
-    </section>
-
-    <!-- AI Summary -->
-    <section class="report-section summary-section">
-        <div class="ai-summary-card">
-            <div class="ai-summary-header">
-                <span class="ai-icon">🤖</span>
-                <span>AI Summary</span>
-            </div>
-            <p class="ai-summary-text">
-                "You attempted to build a website. You accidentally became a laptop consultant. By the way, did you know the 27th laptop model has a really good display? You do now."
-            </p>
-        </div>
-    </section>
-
-    <!-- Export / Share -->
-    <div class="report-actions">
-        <button class="btn btn-primary">Export as PDF</button>
-        <button class="btn btn-secondary">Share Report</button>
     </div>
 </div>
+
+<script>
+const ACHIEVEMENTS = [
+    { emoji: '🗂️', name: 'Tab Collector', desc: '5+ tasks.<br>All ignored.', check: (s) => s.tasks.length >= 5 },
+    { emoji: '🔍', name: 'Researcher', desc: 'Hours researching.<br>Bought nothing.', check: (s) => s.disCount > 0 },
+    { emoji: '👑', name: 'Elite Avoider', desc: '75%+ avoided.<br>Real commitment.', check: (s) => s.tasks.length > 0 && (s.tasksCompleted / s.tasks.length) < 0.25 },
+    { emoji: '🎬', name: 'Tutorial Binge', desc: 'YouTube was the plan.<br>Wrong thing learned.', check: (s) => s.breakdown.youtube },
+    { emoji: '☕', name: 'Caffeine Mode', desc: '3+ distractions.<br>Each deserved coffee.', check: (s) => s.disCount >= 3 },
+    { emoji: '🌙', name: 'Night Owl', desc: 'Score 80+.<br>You committed.', check: (s) => s.score >= 80 },
+    { emoji: '🤖', name: 'AI Fan', desc: 'Researched AI tools.<br>For later.', check: (s) => s.breakdown.ai_tools },
+    { emoji: '💻', name: 'Hardware Expert', desc: '27 laptops compared.<br>Bought zero.', check: (s) => s.breakdown.laptops },
+    { emoji: '🚀', name: 'Startup Dreamer', desc: 'Great idea.<br>Creative timing.', check: (s) => s.breakdown.startup },
+];
+
+let reportData = {};
+
+async function copyReport() {
+    const text = `ProcrastinaAI Report\nScore: ${reportData.score}/100\nTasks: ${reportData.tasksPlanned} planned, ${reportData.tasksCompleted} done\nDistractions: ${reportData.disCount}\nAI: ${reportData.aiSummary}`;
+    copyText(text);
+}
+
+document.addEventListener('DOMContentLoaded', async function () {
+    const session = getSession();
+    const loading = document.getElementById('reportLoading');
+    const content = document.getElementById('reportContent');
+    const noSession = document.getElementById('noSession');
+    const gated = document.getElementById('reportGated');
+    const main = document.getElementById('reportMain');
+
+    if (!session || !session.sessionId) {
+        loading.style.display = 'none';
+        noSession.style.display = 'block';
+        return;
+    }
+
+    const data = await fetchSessionData();
+    if (!data) {
+        showError(loading, 'Could not load data.');
+        return;
+    }
+
+    // REPORT GATING: block if session is still active
+    if (data.isActive !== false) {
+        main.style.display = 'none';
+        gated.style.display = '';
+        return;
+    }
+
+    // Session is closed — show badge
+    document.getElementById('sessionBadge').style.display = '';
+
+    const tasks = data.tasks || [];
+    const disappearances = data.disappearances || [];
+    const disCount = disappearances.length;
+    const breakdown = data.distractionBreakdown || {};
+    const commonExcuse = data.commonExcuse || 'Unknown';
+
+    let tasksCompleted, score, aiSummary, reportDate;
+    if (data.reports && data.reports.length > 0) {
+        const r = data.reports[0];
+        tasksCompleted = r.tasksCompleted;
+        score = r.procrastinationScore;
+        aiSummary = r.aiSummary;
+        reportDate = r.date;
+    } else {
+        tasksCompleted = 0;
+        const result = await apiPost('generate-report', {
+            sessionId: session.sessionId,
+            tasksPlanned: tasks.length,
+            tasksCompleted,
+            disappearances: disCount,
+            commonExcuse: commonExcuse.replace('_', ' '),
+        });
+        if (result.success) {
+            score = result.data.procrastinationScore;
+            aiSummary = result.data.aiSummary;
+            reportDate = result.data.date;
+        } else {
+            score = Math.round(100 - (tasksCompleted / Math.max(tasks.length, 1)) * 50 + disCount * 3);
+            aiSummary = "The AI was too busy procrastinating.";
+            reportDate = new Date().toISOString().split('T')[0];
+        }
+    }
+
+    reportData = { score, tasksPlanned: tasks.length, tasksCompleted, disCount, aiSummary };
+
+    loading.style.display = 'none';
+    content.style.display = '';
+
+    // Date
+    const dateObj = new Date(reportDate + 'T00:00:00');
+    document.getElementById('reportDate').textContent = dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    // REAL ACTIVITY METRICS
+    const sessionLengthSec = data.sessionLengthSeconds || 0;
+    const activeSec = data.activeSeconds || 0;
+    const idleSec = Math.max(0, sessionLengthSec - activeSec);
+    const dataSufficient = data.activityDataSufficient !== false;
+
+    // Format time helper
+    function formatTime(seconds) {
+        if (seconds < 60) return `${Math.round(seconds)}s`;
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.round(seconds % 60);
+        if (mins < 60) return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+        const hrs = Math.floor(mins / 60);
+        const remainMins = mins % 60;
+        return remainMins > 0 ? `${hrs}h ${remainMins}m` : `${hrs}h`;
+    }
+
+    // Session Length (hero)
+    document.getElementById('sessionLength').textContent = sessionLengthSec > 0 ? formatTime(sessionLengthSec) : '—';
+
+    // Activity Breakdown
+    if (!dataSufficient || sessionLengthSec < 30) {
+        // Show insufficient data message
+        document.getElementById('insufficientData').style.display = '';
+        document.getElementById('activityGrid').style.display = 'none';
+    } else {
+        document.getElementById('aActiveTime').textContent = formatTime(activeSec);
+        document.getElementById('aIdleTime').textContent = formatTime(idleSec);
+        document.getElementById('aDistracted').textContent = disCount;
+        document.getElementById('aPlanned').textContent = tasks.length;
+    }
+
+    // Desktop Agent Activity Sections
+    const activitySummary = data.activitySummary;
+    if (data.hasActivityData && activitySummary) {
+        const topApps = activitySummary.topApps || [];
+        const categoryBreakdown = activitySummary.categoryBreakdown || {};
+
+        // Top Applications
+        if (topApps.length > 0) {
+            document.getElementById('topAppsCard').style.display = '';
+            const appsEl = document.getElementById('topAppsList');
+            appsEl.innerHTML = '';
+            topApps.forEach((app, i) => {
+                const mins = Math.round(app.totalSeconds / 60);
+                const el = document.createElement('div');
+                el.className = 'adv-item';
+                el.innerHTML = `<span class="adv-label">#${i+1}</span><span class="adv-value">${app.name} <span style="color:var(--text-muted);">(${app.category})</span> — <strong style="color:var(--accent);">${mins} min</strong></span>`;
+                appsEl.appendChild(el);
+            });
+        }
+
+        // Category Breakdown
+        const catEntries = Object.entries(categoryBreakdown);
+        if (catEntries.length > 0) {
+            document.getElementById('categoryCard').style.display = '';
+            const catEl = document.getElementById('categoryList');
+            catEl.innerHTML = '';
+            const totalSeconds = catEntries.reduce((sum, [, v]) => sum + (v.seconds || 0), 0) || 1;
+            const sortedCats = catEntries.sort((a, b) => (b[1].seconds || 0) - (a[1].seconds || 0));
+            sortedCats.forEach(([cat, info]) => {
+                const pct = Math.round(((info.seconds || 0) / totalSeconds) * 100);
+                const mins = Math.round((info.seconds || 0) / 60);
+                const row = document.createElement('div');
+                row.className = 'lb-item';
+                row.innerHTML = `<span class="lb-name">${cat}</span><div class="lb-bar"><div class="lb-fill" style="width:${pct}%"></div></div><span class="lb-pct">${mins}m (${pct}%)</span>`;
+                catEl.appendChild(row);
+            });
+        }
+
+        // Idle Summary (from full analytics)
+        // Fetch full analytics for idle periods and timeline
+        apiPost('activity/analytics', { sessionId: session.sessionId }).then(result => {
+            if (result.success && result.data) {
+                const analytics = result.data;
+                const idlePeriods = analytics.idlePeriods || [];
+                const timeline = analytics.activityTimeline || [];
+
+                // Idle Summary
+                if (idlePeriods.length > 0) {
+                    document.getElementById('idleCard').style.display = '';
+                    const idleEl = document.getElementById('idleList');
+                    idleEl.innerHTML = '';
+                    idlePeriods.forEach(idle => {
+                        const mins = Math.round(idle.durationSeconds / 60);
+                        const row = document.createElement('div');
+                        row.className = 'adv-item';
+                        const typeLabel = idle.typeDisplay || idle.type;
+                        const endedText = idle.endedAt ? 'Ended' : 'Still idle';
+                        row.innerHTML = `<span class="adv-label">${typeLabel}</span><span class="adv-value">${mins} min <span style="color:var(--text-dim);">(${endedText})</span>${idle.lastApp ? ' — after ' + idle.lastApp : ''}</span>`;
+                        idleEl.appendChild(row);
+                    });
+                }
+
+                // Activity Timeline
+                if (timeline.length > 0) {
+                    document.getElementById('timelineCard').style.display = '';
+                    const timeEl = document.getElementById('timelineList');
+                    timeEl.innerHTML = '';
+                    timeline.slice(0, 20).forEach(item => {
+                        const row = document.createElement('div');
+                        row.className = 'adv-item';
+                        const typeEmoji = item.type === 'app' ? '💻' : item.type === 'website' ? '🌐' : '😴';
+                        const dur = item.durationSeconds > 0 ? ` — ${Math.round(item.durationSeconds / 60)}m` : '';
+                        row.innerHTML = `<span class="adv-label">${typeEmoji}</span><span class="adv-value">${item.name} <span style="color:var(--text-dim);">(${item.category})</span>${dur}</span>`;
+                        timeEl.appendChild(row);
+                    });
+                }
+            }
+        });
+    }
+
+    // Adventure (What Actually Happened)
+    const advEl = document.getElementById('adventureList');
+    advEl.innerHTML = '';
+    if (tasks.length > 0) {
+        advEl.innerHTML += `<div class="adv-item"><span class="adv-label">Started</span><span class="adv-value">📝 ${tasks[0]}</span></div>`;
+    }
+    if (disCount > 0) {
+        const turns = disappearances.map(d => `✓ ${d.type.replace('_', ' ')}`);
+        advEl.innerHTML += `<div class="adv-item"><span class="adv-label">Detoured</span><div class="adv-value">${turns.join('<br>')}</div></div>`;
+    }
+    const pctDone = tasks.length > 0 ? Math.round((tasksCompleted / tasks.length) * 100) : 0;
+    advEl.innerHTML += `<div class="adv-item"><span class="adv-label">Progress</span><div class="adv-value"><div>${tasksCompleted}/${tasks.length} tasks (${pctDone}%)</div><div class="progress-wrap"><div class="progress-track"><div class="progress-fill" style="width:${pctDone}%"></div></div><span class="progress-note">${pctDone < 30 ? 'Almost impressive.' : pctDone < 70 ? 'Not bad. Not good.' : 'Almost made it.'}</span></div></div></div>`;
+
+    // Achievements
+    const stats = { tasks, tasksCompleted, disCount, breakdown, score };
+    const grid = document.getElementById('achievementsGrid');
+    grid.innerHTML = '';
+    const earned = ACHIEVEMENTS.filter(a => a.check(stats));
+    if (earned.length === 0) {
+        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><p>Procrastinate harder.</p></div>';
+    } else {
+        earned.forEach(a => {
+            const el = document.createElement('div');
+            el.className = 'achievement-badge';
+            el.innerHTML = `<span class="achievement-emoji">${a.emoji}</span><p class="achievement-name">${a.name}</p><p class="achievement-desc">${a.desc}</p>`;
+            grid.appendChild(el);
+        });
+    }
+
+    // AI Summary
+    document.getElementById('aiSummaryText').innerHTML = `"${aiSummary.replace(/\n/g, '<br>')}"`;
+
+    // Score
+    document.getElementById('bigScore').textContent = score;
+});
+</script>
 {% endblock %}

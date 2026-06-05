@@ -1,14 +1,135 @@
-{% extends "home/base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>{% block title %}ProcrastinaAI{% endblock %}</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'procrastina_ai/style.css' %}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="pa-body">
 
-{% block title %}ProcrastinaAI — How can I procrastinate more efficiently?{% endblock %}
+    <!-- Premium Navigation -->
+    <nav class="pa-nav">
+        <div class="pa-nav-inner">
+            <!-- Logo (Left) -->
+            <a href="/projects/procrastina-ai/" class="pa-brand">
+                <div class="pa-logo-ring">
+                    <svg viewBox="0 0 36 36" class="pa-ring-svg">
+                        <circle cx="18" cy="18" r="16" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="3"/>
+                        <circle cx="18" cy="18" r="16" fill="none" stroke="var(--accent)" stroke-width="3"
+                            stroke-dasharray="87.96 100.53"
+                            stroke-linecap="round"
+                            transform="rotate(-90 18 18)"/>
+                    </svg>
+                    <span class="pa-logo-letter">PA</span>
+                </div>
+                <div class="pa-brand-text">
+                    <span class="pa-brand-name">ProcrastinaAI<sup class="pa-tm">™</sup></span>
+                    <span class="pa-brand-tag">Professional Procrastination Management</span>
+                </div>
+            </a>
 
-{% block content %}
-{% load static %}
-<link rel="stylesheet" href="{% static 'procrastina_ai/style.css' %}">
-<script defer src="{% static 'procrastina_ai/script.js' %}"></script>
+            <!-- Navigation (Center) -->
+            <div class="pa-nav-center" id="navCenter">
+                {% block pa_nav %}
+                <a href="/projects/procrastina-ai/" class="pa-nav-link">Home</a>
+                <a href="/projects/procrastina-ai/dashboard/" class="pa-nav-link">Dashboard</a>
+                <a href="/projects/procrastina-ai/report/" class="pa-nav-link" id="navReportLink">Report</a>
+                {% endblock %}
+            </div>
 
-<div class="pa-container">
-    {% block pa_content %}{% endblock %}
-</div>
+            <!-- Actions (Right) -->
+            <div class="pa-nav-right">
+                <a href="/" class="pa-nav-exit">Ctrl+Why ↗</a>
+                <!-- Hamburger (Mobile) -->
+                <button class="pa-hamburger" id="hamburgerBtn" aria-label="Menu">
+                    <span></span><span></span><span></span>
+                </button>
+            </div>
+        </div>
+    </nav>
 
-{% endblock %}
+    <!-- Mobile Slide Menu -->
+    <div class="pa-mobile-overlay" id="mobileOverlay"></div>
+    <aside class="pa-mobile-menu" id="mobileMenu">
+        <div class="pa-mobile-header">
+            <div class="pa-logo-ring small">
+                <svg viewBox="0 0 36 36" class="pa-ring-svg">
+                    <circle cx="18" cy="18" r="16" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="3"/>
+                    <circle cx="18" cy="18" r="16" fill="none" stroke="var(--accent)" stroke-width="3"
+                        stroke-dasharray="87.96 100.53"
+                        stroke-linecap="round"
+                        transform="rotate(-90 18 18)"/>
+                </svg>
+                <span class="pa-logo-letter">PA</span>
+            </div>
+            <button class="pa-mobile-close" id="mobileCloseBtn">&times;</button>
+        </div>
+        <div class="pa-mobile-links" id="mobileLinks">
+            {% block pa_mobile_nav %}
+            <a href="/projects/procrastina-ai/">Home</a>
+            <a href="/projects/procrastina-ai/dashboard/">Dashboard</a>
+            <a href="/projects/procrastina-ai/report/" id="mobileReportLink">Report</a>
+            <a href="/projects/procrastina-ai/funny-reasons/">Funny Reasons</a>
+            {% endblock %}
+            <hr class="pa-mobile-divider">
+            <a href="/" class="pa-mobile-exit">← Back to Ctrl+Why</a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="pa-main">
+        {% block pa_content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="pa-footer">
+        <p>ProcrastinaAI™ — Tracking what you didn't do since 2024</p>
+    </footer>
+
+    <script defer src="{% static 'procrastina_ai/script.js' %}"></script>
+    <script>
+    // Mobile menu toggle
+    (function() {
+        const btn = document.getElementById('hamburgerBtn');
+        const menu = document.getElementById('mobileMenu');
+        const overlay = document.getElementById('mobileOverlay');
+        const closeBtn = document.getElementById('mobileCloseBtn');
+
+        function openMenu() {
+            menu.classList.add('open');
+            overlay.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeMenu() {
+            menu.classList.remove('open');
+            overlay.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        btn.addEventListener('click', openMenu);
+        closeBtn.addEventListener('click', closeMenu);
+        overlay.addEventListener('click', closeMenu);
+
+        // Report gating: hide report nav link if session is active
+        const session = getSession();
+        if (session && session.sessionId) {
+            fetchSessionData().then(data => {
+                if (data && data.isActive !== false) {
+                    const navR = document.getElementById('navReportLink');
+                    const mobR = document.getElementById('mobileReportLink');
+                    if (navR) navR.style.display = 'none';
+                    if (mobR) mobR.style.display = 'none';
+                }
+            });
+        }
+    })();
+    </script>
+    {% block pa_scripts %}{% endblock %}
+</body>
+</html>

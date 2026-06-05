@@ -1,145 +1,139 @@
 {% extends "procrastina_ai/base.html" %}
 
 {% block pa_content %}
-<div class="funny-container">
-    <div class="funny-header">
-        <h2>Funny Reasons for Unfinished Tasks</h2>
-        <p class="funny-subtitle">AI-generated excuses that are (almost) believable.</p>
+<div class="funny-wrap">
+    <div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
+        <a href="/projects/procrastina-ai/report/" class="btn btn-secondary" style="padding:0.5rem 1rem; font-size:0.8rem;">← Report</a>
+        <a href="/projects/procrastina-ai/setup/" class="btn btn-secondary" style="padding:0.5rem 1rem; font-size:0.8rem;">New Day</a>
     </div>
 
-    <!-- Task Card 1: Video Recording -->
-    <div class="reason-card">
-        <div class="card-header">
-            <h3 class="task-title">📹 Video Recording</h3>
-        </div>
-        
-        <div class="reasons-list">
-            <div class="reason-item">
-                <span class="reason-bullet">•</span>
-                <p>The camera and I had creative differences.</p>
-            </div>
-            <div class="reason-item">
-                <span class="reason-bullet">•</span>
-                <p>The lighting was ready. I wasn't.</p>
-            </div>
-            <div class="reason-item">
-                <span class="reason-bullet">•</span>
-                <p>Production delayed due to insufficient cinematic energy.</p>
-            </div>
-        </div>
+    <div class="funny-head">
+        <h2>Official Excuses</h2>
+        <p class="subtitle">AI-generated. Technically not lies.</p>
+    </div>
 
-        <div class="card-actions">
-            <button class="btn-icon" title="Copy reasons" onclick="copyToClipboard(this, 'Video Recording reasons')">
-                <span>📋</span> Copy
-            </button>
-            <button class="btn-icon" title="Regenerate reasons">
-                <span>🔄</span> Regenerate
-            </button>
+    <div id="reasonsContainer">
+        <div class="loading-state">
+            <div class="loading-dots"><span></span><span></span><span></span></div>
+            <p>Generating excuses...</p>
         </div>
     </div>
 
-    <!-- Task Card 2: Cold Calls -->
-    <div class="reason-card">
-        <div class="card-header">
-            <h3 class="task-title">☎️ Cold Calls</h3>
-        </div>
-        
-        <div class="reasons-list">
-            <div class="reason-item">
-                <span class="reason-bullet">•</span>
-                <p>Waiting for leads to become warm leads.</p>
-            </div>
-            <div class="reason-item">
-                <span class="reason-bullet">•</span>
-                <p>Confidence package failed to install.</p>
-            </div>
-        </div>
-
-        <div class="card-actions">
-            <button class="btn-icon" title="Copy reasons" onclick="copyToClipboard(this, 'Cold Calls reasons')">
-                <span>📋</span> Copy
-            </button>
-            <button class="btn-icon" title="Regenerate reasons">
-                <span>🔄</span> Regenerate
-            </button>
-        </div>
-    </div>
-
-    <!-- Task Card 3: Email Marketing Campaign -->
-    <div class="reason-card">
-        <div class="card-header">
-            <h3 class="task-title">📧 Email Marketing Campaign</h3>
-        </div>
-        
-        <div class="reasons-list">
-            <div class="reason-item">
-                <span class="reason-bullet">•</span>
-                <p>Subject lines require 47 more A/B test variations.</p>
-            </div>
-            <div class="reason-item">
-                <span class="reason-bullet">•</span>
-                <p>Waiting for inspiration to arrive via email first.</p>
-            </div>
-            <div class="reason-item">
-                <span class="reason-bullet">•</span>
-                <p>The metrics told me they need to marinate a bit longer.</p>
-            </div>
-        </div>
-
-        <div class="card-actions">
-            <button class="btn-icon" title="Copy reasons" onclick="copyToClipboard(this, 'Email Marketing reasons')">
-                <span>📋</span> Copy
-            </button>
-            <button class="btn-icon" title="Regenerate reasons">
-                <span>🔄</span> Regenerate
-            </button>
-        </div>
-    </div>
-
-    <!-- Task Card 4: Bug Fixes -->
-    <div class="reason-card">
-        <div class="card-header">
-            <h3 class="task-title">🐛 Bug Fixes</h3>
-        </div>
-        
-        <div class="reasons-list">
-            <div class="reason-item">
-                <span class="reason-bullet">•</span>
-                <p>The bugs are actually features in disguise.</p>
-            </div>
-            <div class="reason-item">
-                <span class="reason-bullet">•</span>
-                <p>Users will eventually adapt to the current behavior.</p>
-            </div>
-            <div class="reason-item">
-                <span class="reason-bullet">•</span>
-                <p>Need to understand the root cause of procrastination first.</p>
-            </div>
-        </div>
-
-        <div class="card-actions">
-            <button class="btn-icon" title="Copy reasons" onclick="copyToClipboard(this, 'Bug Fixes reasons')">
-                <span>📋</span> Copy
-            </button>
-            <button class="btn-icon" title="Regenerate reasons">
-                <span>🔄</span> Regenerate
-            </button>
+    <div id="noSession" style="display:none;">
+        <div class="error-state">
+            <h3>No active session.</h3>
+            <p>Set up tasks first.</p>
+            <a href="/projects/procrastina-ai/setup/" class="btn btn-primary" style="margin-top:1rem;">Start Setup</a>
         </div>
     </div>
 </div>
 
 <script>
-function copyToClipboard(button, text) {
-    navigator.clipboard.writeText(text).then(() => {
-        const originalText = button.textContent;
-        button.textContent = '✓ Copied';
-        button.style.opacity = '0.7';
-        
-        setTimeout(() => {
-            button.textContent = originalText;
-            button.style.opacity = '1';
-        }, 2000);
-    });
+const ratings = ['🔥 TOP TIER','👑 ELITE','💎 GENIUS','🏆 LEGENDARY','😂 HILARIOUS','✨ SOLID','🌟 MASTER'];
+const taskIcons = ['📝','📧','🎨','💻','📞','📊','🔧','📋','📹','☎️','🐛','📄'];
+const taskReasons = {};
+
+function renderTaskCard(task, reasons, index) {
+    const rating = ratings[index % ratings.length];
+    const icon = taskIcons[index % taskIcons.length];
+    const card = document.createElement('div');
+    card.className = 'reason-card';
+    card.id = `task-card-${index}`;
+
+    const reasonsHtml = reasons.map(r => `
+        <div class="reason-item">
+            <span class="reason-bullet"></span>
+            <p>${r.replace(/\n/g, '<br>')}</p>
+        </div>`).join('');
+
+    card.innerHTML = `
+        <div class="reason-card-head">
+            <span class="reason-task">${icon} ${task}</span>
+            <span class="reason-rating">${rating}</span>
+        </div>
+        <div id="reasons-list-${index}">${reasonsHtml}</div>
+        <div class="reason-actions">
+            <button class="btn-icon" onclick="copyTaskReasons(${index}, '${task.replace(/'/g, "\\'")}')"><span>📋</span> Copy</button>
+            <button class="btn-icon" onclick="regenerateReasons(${index}, '${task.replace(/'/g, "\\'")}')"><span>🔄</span> Regenerate</button>
+        </div>`;
+    return card;
 }
+
+async function copyTaskReasons(index, task) {
+    const reasons = taskReasons[index];
+    if (!reasons) return;
+    copyText(`${task}:\n${reasons.map(r => '- ' + r).join('\n')}`);
+}
+
+async function regenerateReasons(index, task) {
+    const session = getSession();
+    const list = document.getElementById(`reasons-list-${index}`);
+    showLoading(list, 'New excuses...');
+
+    const result = await apiPost('generate-funny-reasons', {
+        sessionId: session ? session.sessionId : null,
+        taskName: task,
+        mood: session ? session.mood : 'lazy',
+    });
+
+    if (result.success && result.data.reasons.length > 0) {
+        taskReasons[index] = result.data.reasons;
+        list.innerHTML = result.data.reasons.map(r => `
+            <div class="reason-item">
+                <span class="reason-bullet"></span>
+                <p>${r.replace(/\n/g, '<br>')}</p>
+            </div>`).join('');
+        showNotification('Fresh excuses! 🔄', 'success');
+    } else {
+        showError(list, 'Failed to generate.');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', async function () {
+    const session = getSession();
+    const container = document.getElementById('reasonsContainer');
+    const noSession = document.getElementById('noSession');
+
+    if (!session || !session.sessionId) {
+        container.style.display = 'none';
+        noSession.style.display = 'block';
+        return;
+    }
+
+    const data = await fetchSessionData();
+    if (!data || !data.tasks || data.tasks.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>No tasks found.</p></div>';
+        return;
+    }
+
+    container.innerHTML = '';
+    const mood = session.mood || 'lazy';
+
+    for (let i = 0; i < data.tasks.length; i++) {
+        const loadingCard = document.createElement('div');
+        loadingCard.className = 'reason-card';
+        loadingCard.id = `task-card-${i}`;
+        loadingCard.innerHTML = `<div class="reason-card-head"><span class="reason-task">${taskIcons[i % taskIcons.length]} ${data.tasks[i]}</span><span class="reason-rating">GENERATING</span></div><div class="reasons-list"><div class="loading-state"><div class="loading-dots"><span></span><span></span><span></span></div></div></div>`;
+        container.appendChild(loadingCard);
+    }
+
+    for (let i = 0; i < data.tasks.length; i++) {
+        const task = data.tasks[i];
+        const result = await apiPost('generate-funny-reasons', {
+            sessionId: session.sessionId,
+            taskName: task,
+            mood,
+        });
+
+        const card = document.getElementById(`task-card-${i}`);
+        if (result.success && result.data.reasons.length > 0) {
+            taskReasons[i] = result.data.reasons;
+            const newCard = renderTaskCard(task, result.data.reasons, i);
+            card.replaceWith(newCard);
+        } else {
+            card.querySelector('.reasons-list').innerHTML = '<div class="error-state"><p>Failed.</p></div>';
+        }
+    }
+});
 </script>
 {% endblock %}

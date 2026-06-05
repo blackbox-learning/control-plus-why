@@ -1,64 +1,224 @@
 {% extends "procrastina_ai/base.html" %}
 
+{% block title %}ProcrastinaAI — Start Procrastinating{% endblock %}
+
 {% block pa_content %}
-<section class="hero hero-landing">
-    <div class="hero-copy">
-        <span class="eyebrow">ProcrastinaAI™</span>
-        <h1>Stop Trying To Be Productive. Start Procrastinating Professionally.</h1>
-        <p class="lead">A premium AI-powered playground for people who want to treat delay like a craft, not a crime.</p>
-        <div class="hero-actions">
-            <a class="btn btn-primary" href="/projects/procrastina-ai/setup/">Start My Day</a>
-            <span class="hero-note">No email required. Just good excuses.</span>
-        </div>
+<style>
+.pa-landing {
+  min-height: calc(100vh - 200px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.pa-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 2rem;
+}
+
+.pa-hero-badge-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--success);
+  border-radius: 50%;
+  animation: pulse-dot 2s ease infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.pa-hero-title {
+  font-size: clamp(2.5rem, 8vw, 4.5rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  margin-bottom: 1.5rem;
+  max-width: 700px;
+}
+
+.pa-hero-title-accent {
+  background: var(--gradient-accent);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.pa-hero-subtitle {
+  font-size: 1.25rem;
+  color: var(--text-secondary);
+  max-width: 500px;
+  margin-bottom: 2.5rem;
+  line-height: 1.5;
+}
+
+.pa-hero-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* Floating Cards */
+.pa-floating-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 4rem;
+  width: 100%;
+  max-width: 700px;
+}
+
+.pa-floating-card {
+  background: var(--gradient-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  text-align: left;
+  transition: all 0.3s;
+}
+
+.pa-floating-card:hover {
+  border-color: var(--border-hover);
+  transform: translateY(-4px);
+}
+
+.pa-floating-card-icon {
+  font-size: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.pa-floating-card-stat {
+  font-family: var(--font-mono);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.pa-floating-card-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+/* Roast Card */
+.pa-roast-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  margin-top: 3rem;
+  max-width: 500px;
+  text-align: left;
+}
+
+.pa-roast-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  margin-bottom: 1rem;
+}
+
+.pa-roast-text {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  font-style: italic;
+}
+
+@media (max-width: 480px) {
+  .pa-floating-cards {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .pa-hero-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .pa-hero-actions .btn {
+    width: 100%;
+  }
+}
+</style>
+
+<section class="pa-landing">
+  <!-- Badge -->
+  <div class="pa-hero-badge">
+    <span class="pa-hero-badge-dot"></span>
+    <span>AI-powered procrastination tracking</span>
+  </div>
+  
+  <!-- Title -->
+  <h1 class="pa-hero-title">
+    Stop Working.<br>
+    <span class="pa-hero-title-accent">Start Procrastinating</span><br>
+    Professionally.
+  </h1>
+  
+  <!-- Subtitle -->
+  <p class="pa-hero-subtitle">
+    Track your distractions. Get roasted by AI. End the day with a report that actually makes you laugh.
+  </p>
+  
+  <!-- CTAs -->
+  <div class="pa-hero-actions">
+    <a href="/projects/procrastina-ai/setup/" class="btn btn-primary btn-large">
+      Start My Day
+    </a>
+    <a href="/projects/procrastina-ai/report/" class="btn btn-secondary btn-large">
+      View Demo Report
+    </a>
+  </div>
+  
+  <!-- Floating Stats -->
+  <div class="pa-floating-cards">
+    <div class="pa-floating-card">
+      <div class="pa-floating-card-icon">🎯</div>
+      <div class="pa-floating-card-stat">94%</div>
+      <div class="pa-floating-card-label">Prediction accuracy</div>
     </div>
-
-    <div class="hero-panel">
-        <div class="hero-card card-achievement">
-            <span>Achievement unlocked</span>
-            <h3>Procrastination Level: Elite</h3>
-            <p>Your calendar is officially a suggestion.</p>
-        </div>
-        <div class="hero-card card-stats">
-            <div>
-                <strong>14</strong>
-                <span>Excuses ready</span>
-            </div>
-            <div>
-                <strong>92%</strong>
-                <span>Focus avoidance</span>
-            </div>
-        </div>
-        <div class="hero-card card-toast">
-            <p>“The AI says you’re spending too much time avoiding your to-do list. Challenge accepted.”</p>
-        </div>
+    <div class="pa-floating-card">
+      <div class="pa-floating-card-icon">📊</div>
+      <div class="pa-floating-card-stat">0/7</div>
+      <div class="pa-floating-card-label">Tasks completed today</div>
     </div>
-</section>
-
-<section class="features-grid">
-    <article class="feature-card">
-        <h3>AI Procrastination Prediction</h3>
-        <p>See the likely path of your delay so you can plan your next distraction with precision.</p>
-    </article>
-    <article class="feature-card">
-        <h3>Missing Person Alerts</h3>
-        <p>Get notified when your motivation disappears, and collect evidence for why it never came back.</p>
-    </article>
-    <article class="feature-card">
-        <h3>Daily Procrastination Reports</h3>
-        <p>End each day with a playful summary of how well you avoided work, and what you discovered instead.</p>
-    </article>
-</section>
-
-<section class="roast-card">
-    <div>
-        <span class="tag">AI Roast</span>
-        <h3>Today’s productivity score:</h3>
-        <p>“You were about two memes away from inventing a new time sink. Proud of you.”</p>
+    <div class="pa-floating-card">
+      <div class="pa-floating-card-icon">🏆</div>
+      <div class="pa-floating-card-stat">47</div>
+      <div class="pa-floating-card-label">Tabs opened</div>
     </div>
+  </div>
+  
+  <!-- AI Roast Card -->
+  <div class="pa-roast-card">
+    <div class="pa-roast-header">
+      <span>🤖</span>
+      <span>AI Roast</span>
+    </div>
+    <p class="pa-roast-text">
+      "You opened this app to track your procrastination.<br>
+      That's already procrastination.<br>
+      Respect the commitment."
+    </p>
+  </div>
 </section>
-
-<footer class="landing-footer">
-    <p>ProcrastinaAI™ is your daily reminder that delay can be elegant, intentional, and oddly satisfying.</p>
-    <a href="/projects/procrastina-ai/report/">See today's report</a>
-</footer>
 {% endblock %}

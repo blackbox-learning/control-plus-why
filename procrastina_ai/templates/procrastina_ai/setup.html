@@ -1,53 +1,135 @@
 {% extends "procrastina_ai/base.html" %}
 
 {% block pa_content %}
-<div class="setup-container">
+<div class="setup-wrap">
     <div class="setup-card">
-        <h2>Setup Your Procrastination Profile</h2>
-        <p class="subtitle">Tell us about your day so we can predict your delay with accuracy.</p>
+        <h2>Set Up Your Day</h2>
+        <p class="subtitle">Be honest. The AI already knows.</p>
 
-        <form class="setup-form" method="post" id="setupForm">
+        <form id="setupForm">
             {% csrf_token %}
 
-            <!-- Tasks Section -->
             <div class="form-section">
-                <label class="section-label">Today's Tasks</label>
-                <input type="text" name="tasks" class="input-field" placeholder="What are you avoiding? (comma-separated)" required>
+                <label class="section-label">What are you avoiding today?</label>
+                <input type="text" name="tasks" class="input-field" placeholder="e.g. finish website, reply to emails" required>
             </div>
 
-            <!-- Mood Section -->
             <div class="form-section">
-                <label class="section-label">How's Your Vibe?</label>
+                <label class="section-label">How are you feeling?</label>
                 <div class="chip-group" id="moodGroup">
                     <input type="hidden" name="mood" id="moodInput" value="">
                     <button type="button" class="chip" data-value="motivated" data-group="mood">Motivated</button>
                     <button type="button" class="chip" data-value="sleepy" data-group="mood">Sleepy</button>
                     <button type="button" class="chip" data-value="burned-out" data-group="mood">Burned Out</button>
                     <button type="button" class="chip" data-value="lazy" data-group="mood">Lazy</button>
-                    <button type="button" class="chip" data-value="existential" data-group="mood">Existential Crisis</button>
+                    <button type="button" class="chip" data-value="focused" data-group="mood">Focused</button>
+                    <button type="button" class="chip" data-value="confused" data-group="mood">Confused</button>
+                    <button type="button" class="chip" data-value="chaotic" data-group="mood">Chaotic</button>
                 </div>
-                <input type="text" name="mood_custom" class="input-field" placeholder="Or describe your vibe...">
+                <div class="custom-input-wrap">
+                    <input type="text" class="custom-input-field" id="customMoodInput" placeholder="Or type your own vibe...">
+                </div>
             </div>
 
-            <!-- Interests Section -->
             <div class="form-section">
-                <label class="section-label">Your Distractions</label>
+                <label class="section-label">What usually steals your time?</label>
                 <div class="chip-group" id="interestGroup">
                     <input type="hidden" name="interests" id="interestInput" value="">
                     <button type="button" class="chip" data-value="youtube" data-group="interest">YouTube</button>
                     <button type="button" class="chip" data-value="ai" data-group="interest">AI</button>
-                    <button type="button" class="chip" data-value="tech" data-group="interest">Tech</button>
                     <button type="button" class="chip" data-value="gaming" data-group="interest">Gaming</button>
-                    <button type="button" class="chip" data-value="instagram" data-group="interest">Instagram</button>
                     <button type="button" class="chip" data-value="movies" data-group="interest">Movies</button>
+                    <button type="button" class="chip" data-value="tech" data-group="interest">Tech</button>
+                    <button type="button" class="chip" data-value="instagram" data-group="interest">Instagram</button>
                     <button type="button" class="chip" data-value="startups" data-group="interest">Startups</button>
                 </div>
-                <input type="text" name="interests_custom" class="input-field" placeholder="Add custom distractions...">
+                <div class="custom-input-wrap">
+                    <input type="text" class="custom-input-field" id="customInterestInput" placeholder="Add custom: e.g. Mechanical Keyboards, Coffee Brewing...">
+                    <div class="custom-tags" id="customTags"></div>
+                </div>
             </div>
 
-            <!-- CTA Button -->
-            <button type="submit" class="btn btn-primary btn-large">Start My Day</button>
+            <button type="submit" class="btn btn-primary btn-large" id="submitBtn">Start My Day</button>
         </form>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    initChipSelection();
+    const customInterests = [];
+
+    // Custom interest input
+    const ciInput = document.getElementById('customInterestInput');
+    const ciTags = document.getElementById('customTags');
+
+    ciInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const val = this.value.trim();
+            if (val && !customInterests.includes(val.toLowerCase())) {
+                customInterests.push(val.toLowerCase());
+                renderTags();
+                this.value = '';
+            }
+        }
+    });
+
+    function renderTags() {
+        ciTags.innerHTML = customInterests.map((v, i) =>
+            `<span class="custom-tag">${v}<button type="button" onclick="removeCustomInterest(${i})">&times;</button></span>`
+        ).join('');
+    }
+
+    window.removeCustomInterest = function(i) {
+        customInterests.splice(i, 1);
+        renderTags();
+    };
+
+    const form = document.getElementById('setupForm');
+    form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.textContent = 'Starting...';
+
+        // Mood: chip or custom
+        const activeMood = document.querySelector('.chip[data-group="mood"].active');
+        const customMood = document.getElementById('customMoodInput').value.trim();
+        const mood = activeMood ? activeMood.getAttribute('data-value') : (customMood || 'lazy');
+
+        // Interests: chips + custom
+        const interestChips = document.querySelectorAll('.chip[data-group="interest"].active');
+        let interests = Array.from(interestChips).map(c => c.getAttribute('data-value'));
+        interests = interests.concat(customInterests);
+        if (interests.length === 0) interests = ['general'];
+
+        const tasksRaw = document.querySelector('[name="tasks"]').value;
+        const tasks = tasksRaw.split(',').map(t => t.trim()).filter(Boolean);
+        if (tasks.length === 0) {
+            showNotification('Enter at least one task.', 'error');
+            btn.disabled = false;
+            btn.textContent = 'Start My Day';
+            return;
+        }
+
+        const result = await apiPost('create-session', { mood, interests, tasks });
+
+        if (result.success) {
+            storeSession({
+                sessionId: result.data.sessionId,
+                mood: result.data.mood,
+                interests: result.data.interests,
+                tasks: result.data.tasks,
+            });
+            window.location.href = '/projects/procrastina-ai/prediction/';
+        } else {
+            showNotification('Failed: ' + result.error, 'error');
+            btn.disabled = false;
+            btn.textContent = 'Start My Day';
+        }
+    });
+});
+</script>
 {% endblock %}

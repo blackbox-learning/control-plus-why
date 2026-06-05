@@ -1,0 +1,15 @@
+# ProcrastinaAI Desktop Agent — Requirements
+#
+# Install: pip install -r requirements.txt
+#
+# These packages are for Windows only.
+
+# Process monitoring — reads active window process name and PID
+psutil>=5.9.0
+
+# Keyboard and mouse activity monitoring for idle detection
+# Only detects THAT input happened, not WHAT was typed
+pynput>=1.7.6
+
+# HTTP client for communicating with the Django backend
+requests>=2.28.0

@@ -1,149 +1,128 @@
 /**
- * ProcrastinaAI Frontend JavaScript
- * 
- * This script handles all frontend interactivity and API calls.
- * API base is: /projects/procrastina-ai/api/
- * 
- * Features:
- * - Chip selection for mood and interests
- * - Session management with localStorage
- * - API calls to backend for AI generation
- * - Notification system
- * - Copy-to-clipboard functionality
+ * ProcrastinaAI — Shared Utility Script
+ *
+ * Provides: API helpers, session management, chip selection, notifications.
+ * Page-specific logic lives in inline <script> tags in each template.
  */
 
 // ============================================================
 // Configuration
 // ============================================================
-
-// API base URL for Django backend
 const API_BASE = '/projects/procrastina-ai/api';
 
-// Store current session ID in browser
-let currentSessionId = localStorage.getItem('procrastina_ai_session_id') || null;
-
 // ============================================================
-// Helper Functions
+// Session Storage (localStorage)
 // ============================================================
 
-/**
- * Make API request to backend.
- * Automatically includes CSRF token for security.
- * 
- * @param {string} endpoint - API endpoint (e.g., 'create-session')
- * @param {object} data - Request body data
- * @returns {Promise<object>} - API response
- */
-async function apiRequest(endpoint, data) {
+function getSession() {
+    const raw = localStorage.getItem('procrastina_ai_session');
+    return raw ? JSON.parse(raw) : null;
+}
+
+function storeSession(data) {
+    localStorage.setItem('procrastina_ai_session', JSON.stringify(data));
+}
+
+function clearSession() {
+    localStorage.removeItem('procrastina_ai_session');
+}
+
+function getSessionId() {
+    const s = getSession();
+    return s ? s.sessionId : null;
+}
+
+// ============================================================
+// CSRF Token
+// ============================================================
+
+function getCsrfToken() {
+    // 1. Try meta tag (added in base.html)
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    if (meta && meta.content) return meta.content;
+    // 2. Try hidden input
+    const input = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (input && input.value) return input.value;
+    // 3. Try Django's csrftoken cookie
+    const match = document.cookie.match(/csrftoken=([^;]+)/);
+    if (match) return match[1];
+    return '';
+}
+
+// ============================================================
+// API Helpers
+// ============================================================
+
+async function apiPost(endpoint, data) {
     try {
-        // Get CSRF token from meta tag (Django security)
-        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
-                         document.querySelector('meta[name="csrf-token"]')?.content || '';
-
+        const csrfToken = getCsrfToken();
         const response = await fetch(`${API_BASE}/${endpoint}/`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken,
-            },
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
             body: JSON.stringify(data)
         });
-
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.statusText}`);
-        }
-
-        const result = await response.json();
-        return result;
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        return await response.json();
     } catch (error) {
-        console.error('API Request Error:', error);
-        return {
-            success: false,
-            error: error.message
-        };
+        console.error(`API POST ${endpoint} error:`, error);
+        return { success: false, error: error.message };
     }
 }
 
-/**
- * Show notification message with auto-dismiss.
- * 
- * @param {string} message - Message to show
- * @param {string} type - Type: 'success', 'error', 'info'
- */
+async function apiGet(endpoint, params = {}) {
+    try {
+        const qs = new URLSearchParams(params).toString();
+        const url = `${API_BASE}/${endpoint}/${qs ? '?' + qs : ''}`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        return await response.json();
+    } catch (error) {
+        console.error(`API GET ${endpoint} error:`, error);
+        return { success: false, error: error.message };
+    }
+}
+
+async function fetchSessionData() {
+    const sessionId = getSessionId();
+    if (!sessionId) return null;
+    const result = await apiGet('session-data', { sessionId });
+    return result.success ? result.data : null;
+}
+
+// ============================================================
+// Notifications
+// ============================================================
+
 function showNotification(message, type = 'info') {
-    const container = document.querySelector('.notifications-container') || 
-                     document.body.appendChild(document.createElement('div'));
-    container.className = 'notifications-container';
-
-    const notification = document.createElement('div');
-    notification.className = `notification notification-${type} show`;
-    notification.textContent = message;
-
-    container.appendChild(notification);
-
-    // Auto-dismiss after 4 seconds
+    let container = document.querySelector('.notifications-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.className = 'notifications-container';
+        document.body.appendChild(container);
+    }
+    const notif = document.createElement('div');
+    notif.className = `notification notification-${type} show`;
+    notif.textContent = message;
+    container.appendChild(notif);
     setTimeout(() => {
-        notification.classList.remove('show');
-        setTimeout(() => notification.remove(), 300);
+        notif.classList.remove('show');
+        setTimeout(() => notif.remove(), 300);
     }, 4000);
 }
 
-/**
- * Store session ID in localStorage.
- * 
- * @param {string} sessionId - Session ID from API
- */
-function storeSessionId(sessionId) {
-    currentSessionId = sessionId;
-    localStorage.setItem('procrastina_ai_session_id', sessionId);
-}
-
-/**
- * Get current session ID.
- * 
- * @returns {string|null} - Current session ID or null
- */
-function getSessionId() {
-    return currentSessionId;
-}
-
-/**
- * Clear session from storage.
- */
-function clearSession() {
-    currentSessionId = null;
-    localStorage.removeItem('procrastina_ai_session_id');
-}
-
 // ============================================================
-// Chip Selection Handling
+// Chip Selection (for setup page)
 // ============================================================
 
-/**
- * Initialize chip selection for mood and interests.
- * Should be called on page load for setup page.
- */
 function initChipSelection() {
-    const chips = document.querySelectorAll('.chip');
-    
-    chips.forEach(chip => {
-        chip.addEventListener('click', function(e) {
+    document.querySelectorAll('.chip').forEach(chip => {
+        chip.addEventListener('click', function (e) {
             e.preventDefault();
-            
             const group = this.getAttribute('data-group');
-            const value = this.getAttribute('data-value');
-            
-            // Mood: single selection (radio button behavior)
             if (group === 'mood') {
-                // Deselect other mood chips
-                document.querySelectorAll('.chip[data-group="mood"]').forEach(c => {
-                    c.classList.remove('active');
-                });
-                // Select this chip
+                document.querySelectorAll('.chip[data-group="mood"]').forEach(c => c.classList.remove('active'));
                 this.classList.add('active');
-            }
-            // Interests: multiple selection (checkbox behavior)
-            else if (group === 'interest') {
+            } else if (group === 'interest') {
                 this.classList.toggle('active');
             }
         });
@@ -151,360 +130,342 @@ function initChipSelection() {
 }
 
 // ============================================================
-// Session Management
+// State Helpers
 // ============================================================
 
-/**
- * Create a new session with user's mood, interests, and tasks.
- * Called from the setup form.
- * 
- * @param {string} mood - Selected mood
- * @param {array} interests - Selected interests
- * @param {array} tasks - User's tasks
- * @returns {Promise<boolean>} - Success/failure
- */
-async function createNewSession(mood, interests, tasks) {
-    console.log('Creating new session...', { mood, interests, tasks });
-    
-    const result = await apiRequest('create-session', {
-        mood,
-        interests,
-        tasks
-    });
-
-    if (result.success) {
-        storeSessionId(result.data.sessionId);
-        console.log('✅ Session created:', result.data.sessionId);
-        showNotification('Session created! Let the procrastination begin! 🎉', 'success');
-        return true;
-    } else {
-        console.error('❌ Failed to create session:', result.error);
-        showNotification('Failed to create session: ' + result.error, 'error');
-        return false;
-    }
-}
-
-// ============================================================
-// Prediction API
-// ============================================================
-
-/**
- * Generate procrastination prediction.
- * Called from prediction page.
- * 
- * @param {string} mood - User's mood
- * @param {array} interests - User's interests
- * @param {array} tasks - User's tasks
- * @returns {Promise<object>} - Prediction data or null
- */
-async function generateProcrastinationPrediction(mood, interests, tasks) {
-    console.log('Generating prediction...');
-    
-    const result = await apiRequest('generate-prediction', {
-        sessionId: getSessionId(),
-        mood,
-        interests,
-        tasks
-    });
-
-    if (result.success) {
-        console.log('✅ Prediction generated');
-        return {
-            steps: result.data.prediction,
-            confidence: result.data.confidence
-        };
-    } else {
-        console.error('❌ Prediction failed:', result.error);
-        showNotification('Failed to generate prediction', 'error');
-        return null;
-    }
-}
-
-/**
- * Display prediction steps on timeline page.
- * 
- * @param {array} steps - Array of prediction steps
- */
-function displayPredictionSteps(steps) {
-    const stepsContainer = document.querySelector('.timeline-journey');
-    if (!stepsContainer) return;
-
-    stepsContainer.innerHTML = '';
-    steps.forEach((step, index) => {
-        const stepElement = document.createElement('div');
-        stepElement.className = 'timeline-step';
-        stepElement.innerHTML = `
-            <div class="step-number">${index + 1}</div>
-            <div class="step-text">${step}</div>
-        `;
-        stepsContainer.appendChild(stepElement);
-    });
-}
-
-// ============================================================
-// Disappearance API
-// ============================================================
-
-/**
- * Save disappearance and get AI response.
- * Called from disappearance modal form.
- * 
- * @param {string} disappearanceType - Type of disappearance
- * @param {string} customLocation - Custom location if 'other'
- * @param {string} mood - User's mood
- * @param {array} interests - User's interests
- * @returns {Promise<object>} - Response data or null
- */
-async function saveDisappearance(disappearanceType, customLocation, mood, interests) {
-    console.log('Saving disappearance...', { disappearanceType, customLocation });
-    
-    const result = await apiRequest('save-disappearance', {
-        sessionId: getSessionId(),
-        disappearanceType,
-        customLocation: customLocation || null,
-        mood,
-        interests
-    });
-
-    if (result.success) {
-        console.log('✅ Disappearance saved');
-        return {
-            type: disappearanceType,
-            aiResponse: result.data.aiResponse
-        };
-    } else {
-        console.error('❌ Disappearance save failed:', result.error);
-        showNotification('Failed to save disappearance', 'error');
-        return null;
-    }
-}
-
-/**
- * Display AI response in disappearance modal.
- * 
- * @param {string} response - AI-generated response
- */
-function displayDisappearanceResponse(response) {
-    const responseContainer = document.getElementById('responseContainer');
-    const aiResponseCard = responseContainer?.querySelector('.ai-response-card');
-    
-    if (aiResponseCard) {
-        aiResponseCard.innerHTML = `
-            <div class="response-text">
-                <p>${response}</p>
-            </div>
-        `;
-    }
-}
-
-// ============================================================
-// Report API
-// ============================================================
-
-/**
- * Generate daily procrastination report.
- * Called from report page.
- * 
- * @param {number} tasksPlanned - Number of tasks planned
- * @param {number} tasksCompleted - Number of tasks completed
- * @param {number} disappearances - Number of disappearances
- * @param {string} commonExcuse - Most common excuse
- * @returns {Promise<object>} - Report data or null
- */
-async function generateDailyReport(tasksPlanned, tasksCompleted, disappearances, commonExcuse) {
-    console.log('Generating report...');
-    
-    const result = await apiRequest('generate-report', {
-        sessionId: getSessionId(),
-        tasksPlanned,
-        tasksCompleted,
-        disappearances,
-        commonExcuse
-    });
-
-    if (result.success) {
-        console.log('✅ Report generated');
-        return {
-            score: result.data.procrastinationScore,
-            summary: result.data.aiSummary,
-            date: result.data.date
-        };
-    } else {
-        console.error('❌ Report generation failed:', result.error);
-        showNotification('Failed to generate report', 'error');
-        return null;
-    }
-}
-
-/**
- * Display report summary on page.
- * 
- * @param {object} report - Report data with summary
- */
-function displayReportSummary(report) {
-    const summaryContainer = document.querySelector('.ai-summary-card');
-    if (!summaryContainer) return;
-
-    summaryContainer.innerHTML = `
-        <div class="summary-title">📊 AI Summary</div>
-        <div class="summary-text">${report.summary}</div>
-        <div class="summary-score">Procrastination Score: ${report.score}/100</div>
-    `;
-}
-
-// ============================================================
-// Funny Reasons API
-// ============================================================
-
-/**
- * Generate funny reasons to procrastinate on a task.
- * Called from funny reasons page.
- * 
- * @param {string} taskName - Name of the task
- * @param {string} mood - User's mood
- * @returns {Promise<array>} - Array of reasons or null
- */
-async function generateFunnyReasons(taskName, mood) {
-    console.log('Generating funny reasons for:', taskName);
-    
-    const result = await apiRequest('generate-funny-reasons', {
-        sessionId: getSessionId(),
-        taskName,
-        mood
-    });
-
-    if (result.success) {
-        console.log('✅ Funny reasons generated');
-        return result.data.reasons;
-    } else {
-        console.error('❌ Funny reasons generation failed:', result.error);
-        showNotification('Failed to generate reasons', 'error');
-        return null;
-    }
-}
-
-/**
- * Display funny reasons on page.
- * 
- * @param {string} taskName - Task name
- * @param {array} reasons - Array of funny reasons
- */
-function displayFunnyReasons(taskName, reasons) {
-    const container = document.querySelector('.reason-card');
+function showLoading(container, message = 'The AI is thinking about your failures...') {
     if (!container) return;
-
-    const reasonsList = reasons.map(reason => `<li>${reason}</li>`).join('');
-    
     container.innerHTML = `
-        <h4>${taskName}</h4>
-        <ul class="reason-list">
-            ${reasonsList}
-        </ul>
-    `;
+        <div class="loading-state">
+            <div class="loading-dots"><span></span><span></span><span></span></div>
+            <p>${message}</p>
+        </div>`;
 }
 
-/**
- * Copy text to clipboard and show feedback.
- * 
- * @param {string} text - Text to copy
- */
-function copyToClipboard(text) {
+function showError(container, message = 'Something went wrong.\nEven the AI needs a break sometimes.') {
+    if (!container) return;
+    container.innerHTML = `
+        <div class="error-state">
+            <h3>Something broke.</h3>
+            <p>${message}</p>
+            <a href="/projects/procrastina-ai/setup/" class="btn btn-primary" style="margin-top:1rem;">Start Over</a>
+        </div>`;
+}
+
+function showEmpty(container, message = "Nothing here yet.\nStart procrastinating and check back later.") {
+    if (!container) return;
+    container.innerHTML = `
+        <div class="empty-state">
+            <div class="empty-icon">🦗</div>
+            <h3>It's quiet... too quiet.</h3>
+            <p>${message}</p>
+        </div>`;
+}
+
+// ============================================================
+// Copy to clipboard
+// ============================================================
+
+function copyText(text) {
     navigator.clipboard.writeText(text).then(() => {
-        showNotification('Copied to clipboard! 📋', 'success');
+        showNotification('Copied! Now paste it somewhere equally unproductive. 📋', 'success');
     }).catch(() => {
-        showNotification('Failed to copy', 'error');
+        showNotification('Copy failed. At least something failed today.', 'error');
     });
 }
 
 // ============================================================
-// Page Initialization
+// Activity Tracker — Real browser activity detection
+// Tracks mousemove, click, keydown, scroll to measure active time.
+// Only seconds with detected activity count toward "active seconds".
 // ============================================================
 
-/**
- * Initialize page on DOMContentLoaded.
- * Detects current page and sets up appropriate handlers.
- */
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 ProcrastinaAI Frontend Initialized');
-    
-    // Restore session from localStorage if it exists
-    if (localStorage.getItem('procrastina_ai_session_id')) {
-        currentSessionId = localStorage.getItem('procrastina_ai_session_id');
-        console.log('✅ Session restored:', currentSessionId);
-    }
-    
-    // Initialize chip selection on setup page
-    if (document.querySelector('.chip-group')) {
-        initChipSelection();
-    }
-    
-    // Initialize disappearance modal if on disappearance page
-    if (document.getElementById('disappearanceModal')) {
-        setupDisappearanceModal();
-    }
-});
+const ActivityTracker = (function() {
+    let activeSeconds = 0;
+    let isRunning = false;
+    let tickInterval = null;
+    let heartbeatInterval = null;
+    let activityThisSecond = false;
+    let lastActivityTime = 0;
+    const IDLE_THRESHOLD_MS = 60000; // 60 seconds of no events = idle
 
-/**
- * Setup disappearance modal form handling.
- * Shows/hides custom input based on "other" selection.
- */
-function setupDisappearanceModal() {
-    const form = document.getElementById('disappearanceForm');
-    const otherInput = document.getElementById('otherInput');
-    const radios = document.querySelectorAll('input[name="disappearance"]');
-    
-    if (!form) return;
-    
-    // Toggle custom input visibility
-    radios.forEach(radio => {
-        radio.addEventListener('change', function() {
-            if (this.value === 'other') {
-                otherInput.style.display = 'block';
-            } else {
-                otherInput.style.display = 'none';
+    function onActivity() {
+        activityThisSecond = true;
+        lastActivityTime = Date.now();
+    }
+
+    function tick() {
+        // Called every 1 second
+        const now = Date.now();
+        const timeSinceLastActivity = now - lastActivityTime;
+
+        if (activityThisSecond || timeSinceLastActivity < IDLE_THRESHOLD_MS) {
+            // Count this second as active if:
+            // 1. An event fired this second, OR
+            // 2. Last activity was within idle threshold (user might be reading/thinking)
+            if (activityThisSecond) {
+                activeSeconds++;
             }
-        });
-    });
-    
-    // Handle form submission
-    form.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const selectedRadio = document.querySelector('input[name="disappearance"]:checked');
-        if (!selectedRadio) return;
-        
-        const disappearanceType = selectedRadio.value;
-        const customLocation = disappearanceType === 'other' ? 
-            document.getElementById('otherText').value : null;
-        const mood = 'sleepy'; // Get from session if available
-        const interests = []; // Get from session if available
-        
-        const response = await saveDisappearance(disappearanceType, customLocation, mood, interests);
-        if (response) {
-            displayDisappearanceResponse(response.aiResponse);
         }
-    });
-}
+        activityThisSecond = false;
+    }
+
+    function sendHeartbeat() {
+        const session = getSession();
+        if (!session || !session.sessionId) return;
+        apiPost('activity-heartbeat', {
+            sessionId: session.sessionId,
+            activeSeconds: activeSeconds
+        });
+    }
+
+    function start() {
+        if (isRunning) return;
+        isRunning = true;
+        activityThisSecond = false;
+        lastActivityTime = Date.now();
+
+        // Listen to activity events
+        document.addEventListener('mousemove', onActivity, { passive: true });
+        document.addEventListener('click', onActivity, { passive: true });
+        document.addEventListener('keydown', onActivity, { passive: true });
+        document.addEventListener('scroll', onActivity, { passive: true });
+        document.addEventListener('touchstart', onActivity, { passive: true });
+
+        // Tick every second to accumulate active time
+        tickInterval = setInterval(tick, 1000);
+
+        // Send heartbeat to server every 30 seconds
+        heartbeatInterval = setInterval(sendHeartbeat, 30000);
+    }
+
+    function stop() {
+        if (!isRunning) return;
+        isRunning = false;
+
+        document.removeEventListener('mousemove', onActivity);
+        document.removeEventListener('click', onActivity);
+        document.removeEventListener('keydown', onActivity);
+        document.removeEventListener('scroll', onActivity);
+        document.removeEventListener('touchstart', onActivity);
+
+        if (tickInterval) {
+            clearInterval(tickInterval);
+            tickInterval = null;
+        }
+        if (heartbeatInterval) {
+            clearInterval(heartbeatInterval);
+            heartbeatInterval = null;
+        }
+
+        // Send final heartbeat
+        sendHeartbeat();
+    }
+
+    function getActiveSeconds() {
+        return activeSeconds;
+    }
+
+    function setActiveSeconds(val) {
+        activeSeconds = val;
+    }
+
+    return { start, stop, getActiveSeconds, setActiveSeconds, sendHeartbeat };
+})();
+
 
 // ============================================================
-// Export Functions (for use in other scripts/modules)
+// AgentPoller — Polls agent status every 15 seconds
+// Updates the dashboard agent panel with live data.
+// Detects agent disconnect and shows reconnection banner.
 // ============================================================
 
-// Make functions available globally if needed
+const AgentPoller = (function() {
+    let pollInterval = null;
+    let wasConnected = false;
+    let wasIdle = false;
+    let onReturnFromIdle = null; // callback set by dashboard
+
+    function poll() {
+        const sessionId = getSessionId();
+        if (!sessionId) return;
+
+        apiGet('session-data', { sessionId }).then(result => {
+            if (!result.success || !result.data) return;
+            const data = result.data;
+            const agentStatus = data.agentStatus;
+
+            // Detect idle return: was idle -> now not idle
+            if (agentStatus) {
+                const isNowConnected = agentStatus.agentConnected;
+                const isNowIdle = agentStatus.isIdle;
+
+                if (wasIdle && !isNowIdle && onReturnFromIdle) {
+                    // User returned from idle
+                    onReturnFromIdle();
+                }
+
+                wasConnected = isNowConnected;
+                wasIdle = isNowIdle;
+            }
+
+            // Update agent panel if visible
+            _updateAgentPanel(data);
+        }).catch(() => {}); // Silently fail on poll errors
+    }
+
+    function _updateAgentPanel(data) {
+        const panel = document.getElementById('agentPanel');
+        if (!panel) return;
+
+        const activityData = data.activitySummary;
+        const agentStatus = data.agentStatus;
+        const isConnected = data.hasActivityData && agentStatus && agentStatus.agentConnected;
+
+        // Toggle manual distraction button based on agent connection
+        const btnDistracted = document.getElementById('btnDistracted');
+        const btnFallback = document.getElementById('btnManualFallback');
+        if (btnDistracted && btnFallback) {
+            if (isConnected) {
+                btnDistracted.style.display = 'none';
+                btnFallback.style.display = '';
+            } else {
+                btnDistracted.style.display = '';
+                btnFallback.style.display = 'none';
+            }
+        }
+
+        if (data.hasActivityData && agentStatus && agentStatus.agentConnected) {
+            document.getElementById('agentWaiting').style.display = 'none';
+            document.getElementById('agentGrid').style.display = '';
+
+            const appEl = document.getElementById('agentActiveApp');
+            if (appEl) appEl.textContent = activityData ? activityData.currentApp || '—' : '—';
+
+            // Connection status with proper states
+            const connEl = document.getElementById('agentConnectionStatus');
+            const badgeEl = document.getElementById('agentBadge');
+            if (connEl && badgeEl) {
+                if (agentStatus.isIdle) {
+                    connEl.textContent = 'Idle';
+                    connEl.style.color = 'var(--text-muted)';
+                    badgeEl.textContent = 'IDLE';
+                    badgeEl.classList.remove('info');
+                } else {
+                    connEl.textContent = 'Connected';
+                    connEl.style.color = 'var(--success)';
+                    badgeEl.textContent = 'CONNECTED';
+                    badgeEl.classList.add('info');
+                }
+            }
+
+            // Last App
+            const lastAppEl = document.getElementById('agentLastApp');
+            if (lastAppEl) lastAppEl.textContent = agentStatus.activeApp || '—';
+
+            const eventsEl = document.getElementById('agentEvents');
+            if (eventsEl) eventsEl.textContent = agentStatus.eventCount || 0;
+            const focusEl = document.getElementById('agentFocusChanges');
+            if (focusEl) focusEl.textContent = agentStatus.focusChanges || 0;
+
+            // Last Activity
+            const lastActEl = document.getElementById('agentLastActivity');
+            if (lastActEl) {
+                if (agentStatus.isIdle && agentStatus.idleSince) {
+                    const idleMins = Math.round((Date.now() - new Date(agentStatus.idleSince).getTime()) / 60000);
+                    lastActEl.textContent = idleMins > 0 ? `${idleMins}m ago` : 'Just now';
+                } else {
+                    lastActEl.textContent = 'Just now';
+                }
+            }
+
+        } else if (wasConnected && (!agentStatus || !agentStatus.agentConnected)) {
+            // Agent was connected but now disconnected — show Reconnecting
+            const badgeEl = document.getElementById('agentBadge');
+            if (badgeEl) {
+                badgeEl.textContent = 'RECONNECTING';
+                badgeEl.classList.remove('info');
+            }
+            const connEl = document.getElementById('agentConnectionStatus');
+            if (connEl) {
+                connEl.textContent = 'Reconnecting...';
+                connEl.style.color = 'var(--danger)';
+            }
+            const lastActEl = document.getElementById('agentLastActivity');
+            if (lastActEl) lastActEl.textContent = 'Connection lost';
+        }
+    }
+
+    function start(callback) {
+        if (pollInterval) return;
+        onReturnFromIdle = callback || null;
+        pollInterval = setInterval(poll, 15000); // 15 seconds
+    }
+
+    function stop() {
+        if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+        }
+    }
+
+    return { start, stop, poll };
+})();
+
+
+// ============================================================
+// SessionRecovery — Restores active session on page load
+// Checks localStorage, validates with server, recovers if needed.
+// ============================================================
+
+const SessionRecovery = (function() {
+    /**
+     * Attempt to recover an active session.
+     * Returns: {recovered: bool, session: object|null}
+     */
+    async function recover() {
+        const existing = getSession();
+
+        // If we already have a session in localStorage, validate it with the server
+        if (existing && existing.sessionId) {
+            const result = await apiGet('session-data', { sessionId: existing.sessionId });
+            if (result.success && result.data && result.data.isActive !== false) {
+                // Session is still active on server — valid
+                return { recovered: true, session: existing, source: 'localStorage' };
+            }
+            // Session no longer active or doesn't exist — clear localStorage
+            clearSession();
+        }
+
+        // Try to recover from server
+        const recoverResult = await apiGet('recover-session');
+        if (recoverResult.success && recoverResult.data && recoverResult.data.hasActiveSession) {
+            const recovered = {
+                sessionId: recoverResult.data.sessionId,
+                mood: recoverResult.data.mood,
+                interests: recoverResult.data.interests,
+                tasks: recoverResult.data.tasks,
+            };
+            storeSession(recovered);
+            return { recovered: true, session: recovered, source: 'server' };
+        }
+
+        return { recovered: false, session: null, source: null };
+    }
+
+    return { recover };
+})();
+
+
+// ============================================================
+// Global exports
+// ============================================================
 window.procrastinaAI = {
-    createNewSession,
-    generateProcrastinationPrediction,
-    displayPredictionSteps,
-    saveDisappearance,
-    displayDisappearanceResponse,
-    generateDailyReport,
-    displayReportSummary,
-    generateFunnyReasons,
-    displayFunnyReasons,
-    copyToClipboard,
-    getSessionId,
-    clearSession,
-    showNotification,
-    apiRequest
+    apiPost, apiGet, fetchSessionData,
+    getSession, storeSession, clearSession, getSessionId,
+    showNotification, showLoading, showError, showEmpty,
+    initChipSelection, copyText,
+    ActivityTracker,
+    AgentPoller,
+    SessionRecovery,
 };
-

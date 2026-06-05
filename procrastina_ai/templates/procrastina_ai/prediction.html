@@ -1,105 +1,108 @@
 {% extends "procrastina_ai/base.html" %}
 
 {% block pa_content %}
-<div class="prediction-container">
-    <h2>Your Procrastination Journey</h2>
-    <p class="subtitle">AI has foreseen your delay with startling accuracy.</p>
+<div class="prediction-wrap">
+    <h2>Your Inevitable Descent</h2>
+    <p class="subtitle" style="color:var(--text-muted); font-size:0.9rem;">We mapped your day. It's funny. It's accurate.</p>
 
-    <!-- Confidence Meter -->
-    <div class="confidence-card">
-        <div class="confidence-header">
+    <div class="forecast-pill">
+        <span>⏱ First distraction in:</span>
+        <strong id="forecastTime">~4 min</strong>
+    </div>
+
+    <!-- Confidence -->
+    <div class="confidence-bar-wrap" id="confidenceCard" style="display:none;">
+        <div class="confidence-top">
             <span>Prediction Confidence</span>
-            <span class="confidence-value">94%</span>
+            <span class="confidence-pct" id="confidenceValue">94%</span>
         </div>
-        <div class="confidence-bar">
-            <div class="confidence-fill" style="width: 94%"></div>
+        <div class="confidence-track">
+            <div class="confidence-fill" id="confidenceFill" style="width: 0%"></div>
         </div>
-        <p class="confidence-text">Frighteningly accurate.</p>
+        <p class="confidence-note">We've seen this before. Many times.</p>
     </div>
 
-    <!-- Timeline Journey -->
-    <div class="timeline-journey">
-        <div class="journey-step">
-            <div class="step-marker">
-                <span class="step-number">1</span>
-            </div>
-            <div class="step-content">
-                <h3>Edit Video</h3>
-                <p>You open the project with determination.</p>
-            </div>
-        </div>
-
-        <div class="journey-connector"></div>
-
-        <div class="journey-step">
-            <div class="step-marker">
-                <span class="step-number">2</span>
-            </div>
-            <div class="step-content">
-                <h3>Need Inspiration</h3>
-                <p>"I just need to find the right vibe first..."</p>
-            </div>
-        </div>
-
-        <div class="journey-connector"></div>
-
-        <div class="journey-step">
-            <div class="step-marker">
-                <span class="step-number">3</span>
-            </div>
-            <div class="step-content">
-                <h3>Open YouTube</h3>
-                <p>"Just one quick tutorial."</p>
-            </div>
-        </div>
-
-        <div class="journey-connector"></div>
-
-        <div class="journey-step">
-            <div class="step-marker">
-                <span class="step-number">4</span>
-            </div>
-            <div class="step-content">
-                <h3>Watch Tutorial</h3>
-                <p>45 minutes pass. You're in a rabbit hole.</p>
-            </div>
-        </div>
-
-        <div class="journey-connector"></div>
-
-        <div class="journey-step">
-            <div class="step-marker">
-                <span class="step-number">5</span>
-            </div>
-            <div class="step-content">
-                <h3>Research Cameras</h3>
-                <p>"Maybe I need better gear for this project."</p>
-            </div>
-        </div>
-
-        <div class="journey-connector"></div>
-
-        <div class="journey-step final">
-            <div class="step-marker final-marker">
-                <span class="step-emoji">💀</span>
-            </div>
-            <div class="step-content">
-                <h3>Forget Editing Exists</h3>
-                <p>You close your laptop, mission accomplished.</p>
-            </div>
+    <!-- Timeline -->
+    <div class="timeline" id="timelineJourney">
+        <div class="loading-state">
+            <div class="loading-dots"><span></span><span></span><span></span></div>
+            <p>Consulting the oracle...</p>
         </div>
     </div>
 
-    <!-- AI Warning -->
-    <div class="ai-warning">
-        <span class="warning-icon">⚠️</span>
-        <div>
-            <h3>AI Warning</h3>
-            <p>"You will spend 3 hours online. You will tell yourself you're 'researching.' You won't edit a single frame. This is not a prediction—this is destiny."</p>
-        </div>
+    <!-- AI Callout -->
+    <div class="ai-callout" id="aiCallout" style="display:none;">
+        <div class="ai-callout-head"><span>⚠️</span> AI Warning</div>
+        <p id="aiWarningText"></p>
     </div>
 
     <!-- CTA -->
-    <button class="btn btn-primary btn-large">Accept My Fate</button>
+    <div id="predictionActions" style="display:none; text-align:center; margin-top:2rem;">
+        <a href="/projects/procrastina-ai/dashboard/" class="btn btn-primary btn-large">Accept My Fate →</a>
+    </div>
+
+    <!-- No session -->
+    <div id="noSession" style="display:none;">
+        <div class="error-state">
+            <h3>No active session.</h3>
+            <p>Set up your profile first.</p>
+            <a href="/projects/procrastina-ai/setup/" class="btn btn-primary" style="margin-top:1rem;">Start Setup</a>
+        </div>
+    </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', async function () {
+    const session = getSession();
+    const timeline = document.getElementById('timelineJourney');
+    const noSession = document.getElementById('noSession');
+
+    if (!session || !session.sessionId) {
+        timeline.style.display = 'none';
+        noSession.style.display = 'block';
+        return;
+    }
+
+    const result = await apiPost('generate-prediction', {
+        sessionId: session.sessionId,
+        mood: session.mood,
+        interests: session.interests,
+        tasks: session.tasks,
+    });
+
+    if (!result.success) {
+        showError(timeline, 'Prediction failed: ' + (result.error || 'Unknown error'));
+        return;
+    }
+
+    const steps = result.data.prediction;
+    const confidence = result.data.confidence || 94;
+
+    document.getElementById('confidenceCard').style.display = '';
+    document.getElementById('confidenceValue').textContent = confidence + '%';
+    document.getElementById('confidenceFill').style.width = confidence + '%';
+
+    const mins = Math.floor(Math.random() * 8) + 2;
+    document.getElementById('forecastTime').textContent = `~${mins} min`;
+
+    timeline.innerHTML = '';
+    steps.forEach((step, i) => {
+        const isFinal = (i === steps.length - 1);
+        const el = document.createElement('div');
+        el.className = 'tl-step' + (isFinal ? ' final' : '');
+        el.innerHTML = isFinal
+            ? `<div class="tl-marker">💀</div><div class="tl-body"><h3>${step}</h3></div>`
+            : `<div class="tl-marker">${i + 1}</div><div class="tl-body"><h3>${step}</h3></div>`;
+        timeline.appendChild(el);
+    });
+
+    const callout = document.getElementById('aiCallout');
+    callout.style.display = '';
+    const hours = (Math.random() * 3 + 2).toFixed(1);
+    document.getElementById('aiWarningText').innerHTML =
+        `You'll spend about ${hours} hours on everything except your work.<br>You'll call it "research." The AI disagrees.`;
+
+    document.getElementById('predictionActions').style.display = '';
+});
+</script>
 {% endblock %}

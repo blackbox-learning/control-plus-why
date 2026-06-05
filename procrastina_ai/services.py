@@ -7,15 +7,52 @@ This module contains all AI-powered functions for generating:
 - Daily reports with procrastination analysis
 - Funny reasons to procrastinate
 
-All functions use OpenAI API (gpt-3.5-turbo model).
+All functions use OpenRouter API (free Google Gemini model).
 """
 
 import os
 import re
 from openai import OpenAI
 
-# Initialize OpenAI client
-client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+# Initialize OpenAI client pointing to OpenRouter
+client = OpenAI(
+    api_key=os.getenv('OPENAI_API_KEY'),  # OpenRouter key stored in OPENAI_API_KEY
+    base_url='https://openrouter.ai/api/v1',
+)
+
+# Free models on OpenRouter (in order of preference, with fallback)
+FREE_MODELS = [
+    'google/gemma-4-31b-it:free',
+    'nvidia/nemotron-3-super-120b-a12b:free',
+    'meta-llama/llama-3.3-70b-instruct:free',
+    'meta-llama/llama-3.2-3b-instruct:free',
+]
+
+
+def _call_ai(prompt, temperature=0.8, max_tokens=300):
+    """
+    Call OpenRouter AI with automatic model fallback on rate-limit errors.
+    Tries each free model in order until one succeeds.
+    """
+    last_error = None
+    for model in FREE_MODELS:
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[{'role': 'user', 'content': prompt}],
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            last_error = e
+            print(f"Model {model} failed: {e}")
+            continue
+    # All models failed
+    raise Exception(
+        "All free AI models are currently rate-limited or unavailable. "
+        "Please check your OpenRouter API key or try again later."
+    ) from last_error
 
 
 def generate_prediction(mood, interests, tasks):
@@ -42,32 +79,32 @@ def generate_prediction(mood, interests, tasks):
     """
     try:
         # Create a personalized prompt
-        prompt = f"""You are a humorous AI that predicts procrastination paths.
+        prompt = f"""You are a funny friend who knows exactly how someone will procrastinate today.
 
-User Profile:
-- Mood: {mood}
-- Interests: {', '.join(interests)}
-- Tasks to do: {', '.join(tasks)}
+Their mood: {mood}
+Their interests: {', '.join(interests)}
+Tasks they planned: {', '.join(tasks)}
 
-Generate a 5-7 step procrastination journey showing EXACTLY how this user will procrastinate.
-Be hilarious and specific to their interests.
+Write a 5-7 step procrastination journey. Show how they start working, get distracted step by step, and end up doing something completely unrelated.
 
-Format your response as a numbered list, one step per line.
-Each step should be 5-10 words max.
-Example: "1. Open email, ignore important message"
+RULES:
+- Each step = ONE short line (3-8 words max)
+- Use simple words a kid would understand
+- Be specific to their interests
+- Be funny but kind — tease, don't insult
+- End with something absurd or relatable
+- Format as a numbered list: "1. Open the project"
 
-IMPORTANT: Only return the numbered steps, nothing else."""
+EXAMPLES OF GOOD STYLE:
+"Open laptop"
+"Check one email"
+"Fall into YouTube"
+"Forget why you opened laptop"
 
-        # Call OpenAI API
-        response = client.chat.completions.create(
-            model='gpt-3.5-turbo',
-            messages=[{'role': 'user', 'content': prompt}],
-            temperature=0.8,
-            max_tokens=300
-        )
+Only return the numbered list. No intro, no explanation."""
 
-        # Parse the response
-        prediction_text = response.choices[0].message.content
+        # Call OpenRouter AI with fallback
+        prediction_text = _call_ai(prompt, temperature=0.8, max_tokens=300)
         steps = [
             re.sub(r'^\d+\.\s*', '', line).strip() 
             for line in prediction_text.split('\n') 
@@ -114,28 +151,37 @@ def generate_disappearance_response(disappearance_type, custom_location, mood, i
         # Use custom location if provided, otherwise use type
         location = custom_location if custom_location else disappearance_type.replace('_', ' ')
         
-        prompt = f"""You are a sarcastic AI roasting someone for procrastinating.
+        prompt = f"""You are a funny friend commenting on someone's distraction.
 
-User disappeared to: {location}
-User mood: {mood}
-User interests: {', '.join(interests)}
+They got distracted by: {location}
+Their mood: {mood}
+Their interests: {', '.join(interests)}
 
-Generate ONE witty, sarcastic response (2-3 sentences max) about where they went.
-Be funny, slightly judgmental, and reference their interests if relevant.
-Keep it under 15 words per sentence.
+Write a SHORT response (2-4 lines max).
 
-IMPORTANT: Only return the roast, nothing else."""
+RULES:
+- Each line = one short sentence
+- Use line breaks between sentences
+- Use simple words
+- Tease them gently, don't insult
+- Add a tiny compliment or "respect" at the end
+- Sound like a friend texting them a joke
 
-        response = client.chat.completions.create(
-            model='gpt-3.5-turbo',
-            messages=[{'role': 'user', 'content': prompt}],
-            temperature=0.9,
-            max_tokens=150
-        )
+EXAMPLES OF GOOD STYLE:
+"You went for one video.
+You came back with a new hobby."
+
+"Your current laptop works fine.
+But the research was impressive.
+Respect the dedication."
+
+Only return the response. No intro, no labels."""
+
+        ai_text = _call_ai(prompt, temperature=0.9, max_tokens=150)
 
         return {
             'success': True,
-            'data': response.choices[0].message.content,
+            'data': ai_text,
         }
     
     except Exception as e:
@@ -171,25 +217,34 @@ def generate_daily_report(tasks_planned, tasks_completed, disappearances, common
             print(f"Summary: {result['data']}")
     """
     try:
-        prompt = f"""You are a witty AI generating a sarcastic daily procrastination report.
+        prompt = f"""You are a funny friend writing someone's end-of-day summary.
 
-Report Stats:
+Today's stats:
 - Tasks planned: {tasks_planned}
 - Tasks completed: {tasks_completed}
-- Disappearances: {disappearances}
-- Most common excuse: {common_excuse}
+- Times they got distracted: {disappearances}
+- Go-to distraction: {common_excuse}
 
-Generate a 3-4 sentence humorous summary of their procrastination day.
-Be sarcastic but supportive. Reference the stats where relevant.
+Write a SHORT summary (3-5 lines max).
 
-IMPORTANT: Only return the summary, nothing else."""
+RULES:
+- Each line = one short sentence
+- Use line breaks between lines
+- Use simple words a kid would understand
+- Be funny but kind
+- Tease them, don't make them feel bad
+- Add a tiny compliment or "respect" moment
+- Sound like a friend commenting on their day
 
-        response = client.chat.completions.create(
-            model='gpt-3.5-turbo',
-            messages=[{'role': 'user', 'content': prompt}],
-            temperature=0.8,
-            max_tokens=200
-        )
+EXAMPLES OF GOOD STYLE:
+"You planned 5 things.
+You finished zero.
+But you did become an expert in laptop reviews.
+Respect the dedication."
+
+Only return the summary. No intro, no labels."""
+
+        ai_text = _call_ai(prompt, temperature=0.8, max_tokens=200)
 
         # Calculate procrastination score
         if tasks_planned > 0:
@@ -199,7 +254,7 @@ IMPORTANT: Only return the summary, nothing else."""
 
         return {
             'success': True,
-            'data': response.choices[0].message.content,
+            'data': ai_text,
             'score': score,
         }
     
@@ -209,6 +264,72 @@ IMPORTANT: Only return the summary, nothing else."""
             'success': False,
             'error': str(e),
         }
+
+
+def generate_idle_return_options(mood, interests, last_app, history):
+    """
+    Generate contextual distraction options for the idle-return popup.
+
+    When the user comes back after an idle period, these options ask
+    where they disappeared to. Options are personalised using mood,
+    interests, the app that was focused before idle, and past
+    disappearances.
+
+    Falls back to a hardcoded list if the AI call fails.
+    """
+    # Default fallback — always works even if AI is unavailable
+    fallback = [
+        {'type': 'youtube',      'label': 'Watching YouTube',     'sub': 'Just one video, right?'},
+        {'type': 'laptops',      'label': 'Laptop Research',      'sub': 'Your current one works fine.'},
+        {'type': 'ai_tools',     'label': 'AI Tool Hunting',      'sub': 'Very meta.'},
+        {'type': 'startup',      'label': 'Startup Ideas',        'sub': 'Great idea. Creative timing.'},
+        {'type': 'comments',     'label': 'Reading Comments',     'sub': 'Your takes are sharper now.'},
+        {'type': 'other',        'label': 'Something Else',       'sub': 'Confess.'},
+    ]
+
+    try:
+        history_str = ', '.join(history[:5]) if history else 'none yet'
+        prompt = f"""You are a funny friend who knows someone just came back after being away from their computer.
+
+Their mood: {mood}
+Their interests: {', '.join(interests) if interests else 'general'}
+Last active app before leaving: {last_app or 'unknown'}
+Previous distractions today: {history_str}
+
+Generate exactly 5 short reasons for where they might have gone.
+Each reason is ONE line: type_label | subtitle
+
+Use these exact types: youtube, laptops, ai_tools, startup, other
+Make the subtitles funny, short (3-6 words), personal to their interests.
+
+Format:
+youtube | Watching YouTube | subtitle here
+laptops | Laptop Research | subtitle here
+ai_tools | AI Tool Hunting | subtitle here
+startup | Startup Ideas | subtitle here
+other | Something Else | subtitle here
+
+Only return the 5 lines. No intro, no explanation."""
+
+        ai_text = _call_ai(prompt, temperature=0.9, max_tokens=200)
+        options = []
+        for line in ai_text.split('\n'):
+            line = line.strip()
+            if '|' not in line:
+                continue
+            parts = [p.strip() for p in line.split('|')]
+            if len(parts) >= 3:
+                options.append({'type': parts[0], 'label': parts[1], 'sub': parts[2]})
+
+        # Always include "Other" as last option
+        if not any(o['type'] == 'other' for o in options):
+            options.append({'type': 'other', 'label': 'Something Else', 'sub': 'Confess.'})
+
+        return options if len(options) >= 3 else fallback
+
+    except Exception as e:
+        print(f"Error generating idle return options: {e}")
+        return fallback
 
 
 def generate_funny_reasons(task_name, mood):
@@ -233,31 +354,39 @@ def generate_funny_reasons(task_name, mood):
                 print(f"- {reason}")
     """
     try:
-        prompt = f"""You are a creative AI generating hilarious reasons to procrastinate.
+        prompt = f"""You are a funny friend giving someone reasons to NOT do their task.
 
-Task: {task_name}
-User Mood: {mood}
+The task: {task_name}
+Their mood: {mood}
 
-Generate 3-4 FUNNY, CREATIVE reasons why someone should procrastinate on this task instead of doing it.
-Make them absurd, funny, and reference common procrastination habits.
-Each reason should be 1-2 sentences max.
+Write 3-4 SHORT reasons why they should skip this task today.
 
-Format: 
+RULES:
+- Each reason = 2-3 short lines
+- Use line breaks between lines
+- Use simple words
+- Be absurd and funny
+- Sound like a friend joking
+- Never be mean or negative
+
+EXAMPLES OF GOOD STYLE:
+"The camera was ready.
+The tripod was ready.
+You were busy becoming a laptop expert."
+
+"The deadline is tomorrow.
+That means you still have tonight.
+And tonight is for research."
+
+Format as a bulleted list:
 - Reason 1
 - Reason 2
 - Reason 3
 
-IMPORTANT: Only return the reasons list, nothing else."""
-
-        response = client.chat.completions.create(
-            model='gpt-3.5-turbo',
-            messages=[{'role': 'user', 'content': prompt}],
-            temperature=0.9,
-            max_tokens=250
-        )
+Only return the list. No intro, no explanation."""
 
         # Parse response into list
-        response_text = response.choices[0].message.content
+        response_text = _call_ai(prompt, temperature=0.9, max_tokens=250)
         reasons = [
             re.sub(r'^-\s*', '', line).strip()
             for line in response_text.split('\n')

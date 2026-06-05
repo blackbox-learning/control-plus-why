@@ -8,7 +8,11 @@ Register models for admin panel so admins can view:
 """
 
 from django.contrib import admin
-from .models import Session, Disappearance, Report
+from .models import (
+    Session, Disappearance, Report,
+    ActivitySession, ActivityLog, ApplicationUsage,
+    WebsiteUsage, IdlePeriod,
+)
 
 
 @admin.register(Session)
@@ -76,4 +80,48 @@ class ReportAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+
+# ============================================================
+# Activity Tracking Models (Desktop Agent)
+# ============================================================
+
+@admin.register(ActivitySession)
+class ActivitySessionAdmin(admin.ModelAdmin):
+    list_display = ['id', 'session', 'source', 'is_active', 'event_count', 'focus_change_count']
+    list_filter = ['source', 'is_active']
+    search_fields = ['id', 'session__id']
+    readonly_fields = ['id', 'started_at', 'ended_at', 'updated_at']
+
+
+@admin.register(ActivityLog)
+class ActivityLogAdmin(admin.ModelAdmin):
+    list_display = ['id', 'activity_session', 'event_type', 'target_name', 'category', 'duration_seconds']
+    list_filter = ['event_type', 'category']
+    search_fields = ['id', 'target_name']
+    readonly_fields = ['id']
+
+
+@admin.register(ApplicationUsage)
+class ApplicationUsageAdmin(admin.ModelAdmin):
+    list_display = ['id', 'activity_session', 'app_name', 'category', 'total_seconds', 'focus_events']
+    list_filter = ['category']
+    search_fields = ['app_name']
+    readonly_fields = ['id']
+
+
+@admin.register(WebsiteUsage)
+class WebsiteUsageAdmin(admin.ModelAdmin):
+    list_display = ['id', 'activity_session', 'domain', 'category', 'total_seconds', 'visit_count']
+    list_filter = ['category']
+    search_fields = ['domain']
+    readonly_fields = ['id']
+
+
+@admin.register(IdlePeriod)
+class IdlePeriodAdmin(admin.ModelAdmin):
+    list_display = ['id', 'activity_session', 'idle_type', 'duration_seconds', 'last_active_app']
+    list_filter = ['idle_type']
+    search_fields = ['id', 'last_active_app']
+    readonly_fields = ['id']
 

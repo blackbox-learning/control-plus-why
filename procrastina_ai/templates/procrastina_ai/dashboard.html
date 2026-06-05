@@ -1,150 +1,696 @@
 {% extends "procrastina_ai/base.html" %}
 
+{% block pa_nav %}
+<a href="/projects/procrastina-ai/" class="pa-nav-link">Home</a>
+<a href="/projects/procrastina-ai/dashboard/" class="pa-nav-link">Dashboard</a>
+<a href="/projects/procrastina-ai/funny-reasons/" class="pa-nav-link">Reasons</a>
+{% endblock %}
+
+{% block pa_mobile_nav %}
+<a href="/projects/procrastina-ai/">Home</a>
+<a href="/projects/procrastina-ai/dashboard/">Dashboard</a>
+<a href="/projects/procrastina-ai/funny-reasons/">Funny Reasons</a>
+{% endblock %}
+
 {% block pa_content %}
-<div class="dashboard-header">
-    <h2>Dashboard</h2>
-    <p class="subtitle">Your procrastination headquarters.</p>
-</div>
-
-<!-- Top Stats -->
-<div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-label">Today's Tasks</div>
-        <div class="stat-value">4</div>
-        <div class="stat-subtitle">Waiting to be ignored</div>
+<!-- Status Bar -->
+<div class="status-bar" id="statusBar">
+    <div class="status-item">
+        <span class="status-dot active" id="statusDot"></span>
+        <span id="statusLabel">Day In Progress</span>
     </div>
-    <div class="stat-card">
-        <div class="stat-label">Procrastination Score</div>
-        <div class="stat-value">87</div>
-        <div class="stat-subtitle">You're crushing it</div>
+    <div class="status-item">
+        Tasks: <span class="status-value" id="sbTasks">0</span>
     </div>
-    <div class="stat-card">
-        <div class="stat-label">Missing Events</div>
-        <div class="stat-value">2</div>
-        <div class="stat-subtitle">Oops.</div>
+    <div class="status-item">
+        Distractions: <span class="status-value" id="sbDistractions">0</span>
     </div>
-    <div class="stat-card">
-        <div class="stat-label">AI Roasts Generated</div>
-        <div class="stat-value">12</div>
-        <div class="stat-subtitle">Felt personally attacked</div>
+    <div class="status-item">
+        Top Excuse: <span class="status-value" id="sbExcuse" style="font-family:var(--font-sans);">—</span>
     </div>
 </div>
 
-<!-- Main Content Grid -->
-<div class="dashboard-grid">
-    <!-- Tasks Section -->
-    <div class="dashboard-section">
-        <h3 class="section-title">Today's Tasks</h3>
-        <div class="task-list">
-            <div class="task-item">
-                <span class="task-icon">📝</span>
-                <div class="task-text">
-                    <p class="task-name">Finish project report</p>
-                    <p class="task-time">Due: 5:00 PM</p>
-                </div>
-            </div>
-            <div class="task-item">
-                <span class="task-icon">📧</span>
-                <div class="task-text">
-                    <p class="task-name">Reply to emails</p>
-                    <p class="task-time">Overdue by 2 days</p>
-                </div>
-            </div>
-            <div class="task-item">
-                <span class="task-icon">🎨</span>
-                <div class="task-text">
-                    <p class="task-name">Design mockups</p>
-                    <p class="task-time">Due: Tomorrow</p>
-                </div>
-            </div>
-        </div>
+<!-- Centered Floating Button -->
+<div class="distracted-center" id="distractedCenter">
+    <button class="btn-distracted-float" id="btnDistracted" onclick="openDistractionModal()">
+        🫣 I Got Distracted
+    </button>
+    <!-- Fallback link shown when agent is connected (idle-return popup is primary) -->
+    <a href="#" id="btnManualFallback" onclick="openDistractionModal(); return false;" style="display:none; color:var(--text-muted); font-size:0.82rem; text-decoration:underline; margin-top:0.3rem; cursor:pointer;">Log distraction manually</a>
+    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; justify-content:center;">
+        <a href="/projects/procrastina-ai/funny-reasons/" class="btn btn-secondary">View Reasons</a>
+        <button class="btn btn-danger" id="btnStopDay" onclick="stopMyDay()">🛑 Stop My Day</button>
     </div>
+</div>
 
-    <!-- Recent Excuses -->
-    <div class="dashboard-section">
-        <h3 class="section-title">Recent Excuses</h3>
-        <div class="excuse-list">
-            <div class="excuse-item">
-                <span class="excuse-emoji">😺</span>
-                <p>My cat needed a pep talk</p>
-            </div>
-            <div class="excuse-item">
-                <span class="excuse-emoji">☕</span>
-                <p>Coffee break extended by 3 hours</p>
-            </div>
-            <div class="excuse-item">
-                <span class="excuse-emoji">🎵</span>
-                <p>Found the perfect playlist first</p>
-            </div>
-            <div class="excuse-item">
-                <span class="excuse-emoji">📱</span>
-                <p>Had to check my phone 47 times</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- AI Responses -->
-    <div class="dashboard-section wide">
-        <h3 class="section-title">Recent AI Responses</h3>
-        <div class="ai-response-box">
-            <div class="response-header">AI Observation</div>
-            <p class="response-text">"You opened your task list, looked at it for 3 seconds, and immediately switched to YouTube. That's new. Not really, but the commitment is admirable."</p>
-        </div>
-        <div class="ai-response-box">
-            <div class="response-header">AI Prediction</div>
-            <p class="response-text">"Based on your current trajectory, you will spend exactly 6 more hours avoiding work, then panic at 11 PM and question your life choices."</p>
-        </div>
-    </div>
-
-    <!-- Disappearance Count -->
-    <div class="dashboard-section">
-        <h3 class="section-title">Disappearance Count</h3>
-        <div class="disappearance-stat">
-            <div class="big-number">7</div>
-            <p class="big-label">Times motivation vanished</p>
-            <p class="disappearance-msg">It usually returns around 11:45 PM.</p>
+<!-- Ended Banner -->
+<div id="sessionEndedBanner" style="display:none;">
+    <div class="ended-banner">
+        <h3>Your day has ended.</h3>
+        <p>Check your report or start fresh.</p>
+        <div style="display:flex; gap:0.5rem; justify-content:center;">
+            <a href="/projects/procrastina-ai/report/" class="btn btn-primary">View Report</a>
+            <a href="/projects/procrastina-ai/setup/" class="btn btn-secondary">New Day</a>
         </div>
     </div>
 </div>
 
-<!-- Floating Notifications Container -->
+<!-- Stats -->
+<div class="stats-row" id="statsGrid">
+    <div class="stat-card">
+        <div class="stat-label">Tasks</div>
+        <div class="stat-value" id="statTasks">—</div>
+        <div class="stat-sub" id="statTasksSub">Loading...</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Distractions</div>
+        <div class="stat-value" id="statDistractions">—</div>
+        <div class="stat-sub" id="statDisSub">None yet</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Top Excuse</div>
+        <div class="stat-value" id="statExcuse" style="font-size:1.1rem;">—</div>
+        <div class="stat-sub" id="statExcuseSub">No excuses yet</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">AI Roasts</div>
+        <div class="stat-value" id="statRoasts">—</div>
+        <div class="stat-sub">So far</div>
+    </div>
+</div>
+
+<!-- Desktop Agent Activity Panel (shown only when activity data exists) -->
+<div class="report-card" id="agentPanel" style="display:none; margin-bottom:1.5rem;">
+    <div class="report-card-title" style="display:flex; align-items:center; justify-content:space-between;">
+        Desktop Agent Activity
+        <span class="title-badge" id="agentBadge" style="font-size:0.7rem;">WAITING</span>
+    </div>
+    <div class="analytics-grid" id="agentGrid" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="analytics-card">
+            <div class="analytics-label">Current App</div>
+            <div class="analytics-text" id="agentActiveApp" style="font-size:1.1rem; color:var(--text);">—</div>
+        </div>
+        <div class="analytics-card">
+            <div class="analytics-label">Last App</div>
+            <div class="analytics-text" id="agentLastApp" style="font-size:1.1rem; color:var(--text);">—</div>
+        </div>
+        <div class="analytics-card">
+            <div class="analytics-label">Connection</div>
+            <div class="analytics-text" id="agentConnectionStatus" style="font-size:1.1rem; color:var(--text);">—</div>
+        </div>
+        <div class="analytics-card">
+            <div class="analytics-label">Events</div>
+            <div class="analytics-num" id="agentEvents" style="font-size:1.5rem;">0</div>
+        </div>
+        <div class="analytics-card">
+            <div class="analytics-label">Focus Changes</div>
+            <div class="analytics-num" id="agentFocusChanges" style="font-size:1.5rem;">0</div>
+        </div>
+        <div class="analytics-card">
+            <div class="analytics-label">Last Activity</div>
+            <div class="analytics-text" id="agentLastActivity" style="font-size:0.95rem; color:var(--text-secondary);">—</div>
+        </div>
+    </div>
+    <div id="agentWaiting" style="text-align:center; padding:1rem;">
+        <p style="color:var(--text-muted); font-style:italic;">Waiting for activity data.</p>
+        <p style="color:var(--text-dim); font-size:0.78rem; margin-top:0.3rem;">Connect the desktop agent to see live activity tracking.</p>
+    </div>
+</div>
+
+<!-- Grid -->
+<div class="dash-grid">
+    <div class="dash-section">
+        <div class="dash-section-title">Tasks <span class="title-badge warn" id="taskBadge">PENDING</span></div>
+        <div id="taskList">
+            <div class="loading-state"><div class="loading-dots"><span></span><span></span><span></span></div></div>
+        </div>
+    </div>
+    <div class="dash-section">
+        <div class="dash-section-title">Leaderboard <span class="title-badge info">TODAY</span></div>
+        <div id="leaderboardList">
+            <div class="empty-state"><p>Log some distractions first.</p></div>
+        </div>
+    </div>
+    <div class="dash-section wide">
+        <div class="dash-section-title">AI Observations <span class="title-badge info">LIVE</span></div>
+        <div id="aiResponsesList">
+            <div class="empty-state"><p>Hit "I Got Distracted" to get roasted.</p></div>
+        </div>
+    </div>
+</div>
+
+<!-- No session -->
+<div id="noSession" style="display:none;">
+    <div class="error-state">
+        <h3>No active session.</h3>
+        <p>Set up first.</p>
+        <a href="/projects/procrastina-ai/setup/" class="btn btn-primary" style="margin-top:1rem;">Start Setup</a>
+    </div>
+</div>
+
+<!-- Modal -->
+<div id="distractionModal" class="pa-modal-overlay">
+    <div class="pa-modal-content">
+        <div class="pa-modal-header">
+            <h2 class="modal-headline">Where Did You Go?</h2>
+            <button class="pa-modal-close" onclick="closeDistractionModal()">&times;</button>
+        </div>
+        <div class="pa-modal-body">
+            <p class="modal-subheadline">Be honest.</p>
+
+            <form id="distractionForm">
+                <div class="modal-options">
+                    <label class="modal-option">
+                        <input type="radio" name="disappearance" value="youtube" required>
+                        <span class="modal-option-emoji">🎬</span>
+                        <span class="modal-option-text">
+                            <span class="modal-option-name">YouTube</span>
+                            <span class="modal-option-sub">Just one video, right?</span>
+                        </span>
+                    </label>
+                    <label class="modal-option">
+                        <input type="radio" name="disappearance" value="laptops">
+                        <span class="modal-option-emoji">💻</span>
+                        <span class="modal-option-text">
+                            <span class="modal-option-name">Comparing Laptops</span>
+                            <span class="modal-option-sub">Your current one works fine.</span>
+                        </span>
+                    </label>
+                    <label class="modal-option">
+                        <input type="radio" name="disappearance" value="ai_tools">
+                        <span class="modal-option-emoji">🤖</span>
+                        <span class="modal-option-text">
+                            <span class="modal-option-name">AI Tools</span>
+                            <span class="modal-option-sub">Very meta.</span>
+                        </span>
+                    </label>
+                    <label class="modal-option">
+                        <input type="radio" name="disappearance" value="startup">
+                        <span class="modal-option-emoji">🚀</span>
+                        <span class="modal-option-text">
+                            <span class="modal-option-name">Startup Planning</span>
+                            <span class="modal-option-sub">Great idea. Creative timing.</span>
+                        </span>
+                    </label>
+                    <label class="modal-option">
+                        <input type="radio" name="disappearance" value="comments">
+                        <span class="modal-option-emoji">💬</span>
+                        <span class="modal-option-text">
+                            <span class="modal-option-name">Reading Comments</span>
+                            <span class="modal-option-sub">Your takes are sharper now.</span>
+                        </span>
+                    </label>
+                    <label class="modal-option">
+                        <input type="radio" name="disappearance" value="other">
+                        <span class="modal-option-emoji">❓</span>
+                        <span class="modal-option-text">
+                            <span class="modal-option-name">Something Else</span>
+                            <span class="modal-option-sub">Confess.</span>
+                        </span>
+                    </label>
+                </div>
+
+                <div id="otherInput" style="display:none; margin-bottom:1rem;">
+                    <input type="text" id="otherText" class="input-field" placeholder="Your actual distraction..." maxlength="80">
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-large" style="width:100%;" id="confessBtn">Submit Confession</button>
+            </form>
+
+            <div id="modalResponse" style="display:none;">
+                <div class="ai-box" style="margin-top:1rem;">
+                    <div class="ai-box-head">AI Verdict</div>
+                    <p class="ai-box-text" id="modalResponseText"></p>
+                </div>
+                <div style="display:flex; gap:0.5rem; margin-top:1rem; justify-content:center;">
+                    <button class="btn btn-primary" onclick="resetModal()">Again</button>
+                    <button class="btn btn-secondary" onclick="closeDistractionModal()">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Idle Return Modal (shown when user returns from idle detected by agent) -->
+<div id="idleReturnModal" class="pa-modal-overlay">
+    <div class="pa-modal-content">
+        <div class="pa-modal-header">
+            <h2 class="modal-headline">Welcome Back</h2>
+            <button class="pa-modal-close" onclick="closeIdleReturnModal()">&times;</button>
+        </div>
+        <div class="pa-modal-body">
+            <p class="modal-subheadline" id="idleReturnSubtitle">You disappeared for a while. Care to explain?</p>
+
+            <form id="idleReturnForm">
+                <div class="modal-options" id="idleReturnOptions">
+                    <!-- Populated dynamically from API -->
+                    <div class="loading-state"><div class="loading-dots"><span></span><span></span><span></span></div></div>
+                </div>
+
+                <div id="idleReturnOtherInput" style="display:none; margin-bottom:1rem;">
+                    <input type="text" id="idleReturnOtherText" class="input-field" placeholder="Your actual distraction..." maxlength="80">
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-large" style="width:100%;" id="idleReturnSubmitBtn">Submit</button>
+            </form>
+
+            <div id="idleReturnResponse" style="display:none;">
+                <div class="ai-box" style="margin-top:1rem;">
+                    <div class="ai-box-head">AI Verdict</div>
+                    <p class="ai-box-text" id="idleReturnResponseText"></p>
+                </div>
+                <div style="display:flex; gap:0.5rem; margin-top:1rem; justify-content:center;">
+                    <button class="btn btn-secondary" onclick="closeIdleReturnModal()">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div id="notifications-container" class="notifications-container"></div>
 
 <script>
-// Sarcastic notifications that appear randomly
-const notifications = [
-    "Still procrastinating? That's the spirit!",
-    "Your tasks called. You didn't answer.",
-    "Plot twist: You actually finish something.",
-    "Productivity is overrated anyway.",
-    "The deadline is your best friend. Lie to yourself.",
-    "You're not late, you're 'fashionably delayed.'",
-    "AI prediction: You'll read this instead of working.",
-    "Congratulations! You've unlocked: Midnight Panic Mode."
-];
+const fallbackResponses = {
+    youtube: "You went for one video.\nYou came back with a new hobby.",
+    laptops: "Your laptop works fine.\nBut the research was impressive.",
+    ai_tools: "You researched AI tools.\nFor productivity.\nLater.",
+    startup: "The idea was great.\nThe timing was creative.",
+    comments: "Your opinions got upgraded.\nProductivity remains untouched.",
+    other: null,
+};
 
-function showNotification(text) {
-    const container = document.getElementById('notifications-container');
-    const notif = document.createElement('div');
-    notif.className = 'notification';
-    notif.textContent = text;
-    
-    container.appendChild(notif);
-    
-    setTimeout(() => {
-        notif.classList.add('show');
-    }, 100);
-    
-    setTimeout(() => {
-        notif.classList.remove('show');
-        setTimeout(() => notif.remove(), 300);
-    }, 4000);
+let sessionIsActive = true;
+let lastIdleDurationSeconds = 0;
+
+function openDistractionModal() {
+    if (!sessionIsActive) {
+        showNotification("Day's over. Start a new one.", "error");
+        return;
+    }
+    document.getElementById('distractionModal').classList.add('open');
+    document.body.style.overflow = 'hidden';
 }
 
-// Show a random notification on page load
-document.addEventListener('DOMContentLoaded', function() {
-    const randomNotif = notifications[Math.floor(Math.random() * notifications.length)];
-    setTimeout(() => showNotification(randomNotif), 500);
+function closeDistractionModal() {
+    document.getElementById('distractionModal').classList.remove('open');
+    document.body.style.overflow = '';
+}
+
+function resetModal() {
+    document.getElementById('distractionForm').style.display = '';
+    document.getElementById('distractionForm').reset();
+    document.getElementById('modalResponse').style.display = 'none';
+    document.getElementById('otherInput').style.display = 'none';
+    document.getElementById('confessBtn').disabled = false;
+    document.getElementById('confessBtn').textContent = 'Submit Confession';
+}
+
+// Idle Return Modal functions
+function openIdleReturnModal(idleSeconds) {
+    lastIdleDurationSeconds = idleSeconds || 0;
+    const mins = Math.round(lastIdleDurationSeconds / 60);
+    const subtitle = mins > 0
+        ? `You disappeared for ${mins} minute${mins !== 1 ? 's' : ''}. Care to explain?`
+        : 'You disappeared for a while. Care to explain?';
+    document.getElementById('idleReturnSubtitle').textContent = subtitle;
+
+    document.getElementById('idleReturnForm').style.display = '';
+    document.getElementById('idleReturnResponse').style.display = 'none';
+    document.getElementById('idleReturnOtherInput').style.display = 'none';
+    document.getElementById('idleReturnSubmitBtn').disabled = false;
+    document.getElementById('idleReturnSubmitBtn').textContent = 'Submit';
+
+    document.getElementById('idleReturnModal').classList.add('open');
+    document.body.style.overflow = 'hidden';
+
+    // Fetch contextual options from API
+    loadIdleReturnOptions();
+}
+
+function closeIdleReturnModal() {
+    document.getElementById('idleReturnModal').classList.remove('open');
+    document.body.style.overflow = '';
+}
+
+async function loadIdleReturnOptions() {
+    const session = getSession();
+    const container = document.getElementById('idleReturnOptions');
+    container.innerHTML = '<div class="loading-state"><div class="loading-dots"><span></span><span></span><span></span></div></div>';
+
+    const result = await apiGet('idle-return-options', { sessionId: session.sessionId });
+    const emojis = { youtube: '🎬', laptops: '💻', ai_tools: '🤖', startup: '🚀', comments: '💬', other: '❓' };
+    const options = (result.success && result.data && result.data.options) ? result.data.options : [];
+
+    // Fallback if API failed
+    const finalOptions = options.length > 0 ? options : [
+        { type: 'youtube', label: 'Watching YouTube', sub: 'Just one video, right?' },
+        { type: 'laptops', label: 'Laptop Research', sub: 'Your current one works fine.' },
+        { type: 'ai_tools', label: 'AI Tool Hunting', sub: 'Very meta.' },
+        { type: 'startup', label: 'Startup Ideas', sub: 'Great idea. Creative timing.' },
+        { type: 'other', label: 'Something Else', sub: 'Confess.' },
+    ];
+
+    container.innerHTML = '';
+    finalOptions.forEach((opt, i) => {
+        const emoji = emojis[opt.type] || '❓';
+        const checked = i === 0 ? 'checked' : '';
+        const label = document.createElement('label');
+        label.className = 'modal-option';
+        label.innerHTML = `
+            <input type="radio" name="idleReason" value="${opt.type}" ${checked}>
+            <span class="modal-option-emoji">${emoji}</span>
+            <span class="modal-option-text">
+                <span class="modal-option-name">${opt.label}</span>
+                <span class="modal-option-sub">${opt.sub}</span>
+            </span>`;
+        container.appendChild(label);
+    });
+
+    // Wire up 'other' toggle
+    container.querySelectorAll('input[name="idleReason"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            document.getElementById('idleReturnOtherInput').style.display = this.value === 'other' ? 'block' : 'none';
+            if (this.value === 'other') document.getElementById('idleReturnOtherText').focus();
+        });
+    });
+}
+
+async function stopMyDay() {
+    const session = getSession();
+    if (!session || !session.sessionId) return;
+    if (!confirm("Stop your day and generate your report?")) return;
+
+    // Stop activity tracker and get final seconds
+    ActivityTracker.stop();
+    AgentPoller.stop();
+    const finalActiveSeconds = ActivityTracker.getActiveSeconds();
+
+    // Disconnect agent if connected
+    await apiPost('agent-disconnect', { sessionId: session.sessionId });
+
+    const result = await apiPost('end-session', {
+        sessionId: session.sessionId,
+        activeSeconds: finalActiveSeconds
+    });
+    if (result.success) {
+        sessionIsActive = false;
+        document.getElementById('btnDistracted').disabled = true;
+        document.getElementById('btnStopDay').disabled = true;
+        document.getElementById('sessionEndedBanner').style.display = '';
+        showNotification("Day ended. Report time. 📊", "info");
+        setTimeout(() => { window.location.href = '/projects/procrastina-ai/report/'; }, 1500);
+    } else {
+        showNotification("Failed: " + result.error, "error");
+    }
+}
+
+document.addEventListener('DOMContentLoaded', async function () {
+    // Session recovery: validate localStorage or recover from server
+    let session = getSession();
+    if (!session || !session.sessionId) {
+        const recovery = await SessionRecovery.recover();
+        if (recovery.recovered) {
+            session = recovery.session;
+            showNotification("Session recovered. Welcome back.", "info");
+        }
+    }
+
+    if (!session || !session.sessionId) {
+        document.getElementById('statsGrid').style.display = 'none';
+        document.querySelector('.dash-grid').style.display = 'none';
+        document.getElementById('statusBar').style.display = 'none';
+        document.getElementById('distractedCenter').style.display = 'none';
+        document.getElementById('noSession').style.display = 'block';
+        return;
+    }
+
+    const data = await fetchSessionData();
+    if (!data) {
+        showError(document.querySelector('.dash-grid'), 'Could not load data.');
+        return;
+    }
+
+    sessionIsActive = data.isActive !== false;
+    if (!sessionIsActive) {
+        document.getElementById('btnDistracted').disabled = true;
+        document.getElementById('btnStopDay').disabled = true;
+        document.getElementById('sessionEndedBanner').style.display = '';
+        document.getElementById('statusDot').classList.remove('active');
+        document.getElementById('statusDot').classList.add('ended');
+        document.getElementById('statusLabel').textContent = 'Day Completed';
+    } else {
+        // Start activity tracking for active sessions
+        ActivityTracker.setActiveSeconds(data.activeSeconds || 0);
+        ActivityTracker.start();
+
+        // Start agent polling with idle-return detection
+        AgentPoller.start(function onReturnFromIdle() {
+            const agentSt = data.agentStatus;
+            const idleDuration = agentSt ? (agentSt.idleSeconds || 0) : 0;
+            openIdleReturnModal(idleDuration);
+        });
+    }
+
+    const tasks = data.tasks || [];
+    const disappearances = data.disappearances || [];
+    const disCount = disappearances.length;
+    const commonExcuse = data.commonExcuse || 'None';
+
+    // Status bar
+    document.getElementById('sbTasks').textContent = tasks.length;
+    document.getElementById('sbDistractions').textContent = disCount;
+    document.getElementById('sbExcuse').textContent = commonExcuse.replace('_', ' ');
+
+    document.getElementById('statTasks').textContent = tasks.length;
+    document.getElementById('statTasksSub').textContent = tasks.length > 0 ? 'All ignored' : 'None';
+    document.getElementById('statDistractions').textContent = disCount;
+    document.getElementById('statDisSub').textContent = disCount === 0 ? 'None yet' : `${disCount} vanish${disCount > 1 ? 'es' : ''}`;
+    document.getElementById('statExcuse').textContent = commonExcuse.replace('_', ' ');
+    document.getElementById('statExcuseSub').textContent = disCount > 0 ? 'Go-to distraction' : 'Hit the button';
+    document.getElementById('statRoasts').textContent = disCount;
+
+    // Tasks
+    const taskListEl = document.getElementById('taskList');
+    const icons = ['📝','📧','🎨','💻','📞','📊','🔧','📋'];
+    taskListEl.innerHTML = '';
+    if (tasks.length === 0) {
+        taskListEl.innerHTML = '<div class="empty-state"><p>No tasks.</p></div>';
+    } else {
+        tasks.forEach((task, i) => {
+            const el = document.createElement('div');
+            el.className = 'task-item';
+            el.innerHTML = `<span class="task-icon">${icons[i % icons.length]}</span><span class="task-name">${task}</span><span class="task-status ignored">Ignored</span>`;
+            taskListEl.appendChild(el);
+        });
+    }
+
+    // Leaderboard
+    const breakdown = data.distractionBreakdown || {};
+    const lbList = document.getElementById('leaderboardList');
+    const total = Object.values(breakdown).reduce((a, b) => a + b, 0) || 1;
+    const sorted = Object.entries(breakdown).sort((a, b) => b[1] - a[1]);
+    lbList.innerHTML = '';
+    if (sorted.length === 0) {
+        lbList.innerHTML = '<div class="empty-state"><p>No distractions yet.</p></div>';
+    } else {
+        sorted.forEach(([type, count], i) => {
+            const pct = Math.round((count / total) * 100);
+            const el = document.createElement('div');
+            el.className = 'lb-item';
+            el.innerHTML = `<span class="lb-rank">#${i+1}</span><span class="lb-name">${type.replace('_',' ')}</span><div class="lb-bar"><div class="lb-fill" style="width:${pct}%"></div></div><span class="lb-pct">${pct}%</span>`;
+            lbList.appendChild(el);
+        });
+    }
+
+    // AI Responses
+    const responsesEl = document.getElementById('aiResponsesList');
+    responsesEl.innerHTML = '';
+    if (disappearances.length === 0) {
+        responsesEl.innerHTML = '<div class="empty-state"><p>No roasts yet.</p></div>';
+    } else {
+        disappearances.forEach((d, i) => {
+            const box = document.createElement('div');
+            box.className = 'ai-box';
+            box.innerHTML = `<div class="ai-box-head">#${i+1} — ${d.type.replace('_',' ')}</div><p class="ai-box-text">"${d.aiResponse}"</p>`;
+            responsesEl.appendChild(box);
+        });
+    }
+
+    // Modal: toggle other input
+    document.querySelectorAll('#distractionForm input[name="disappearance"]').forEach(radio => {
+        radio.addEventListener('change', function () {
+            document.getElementById('otherInput').style.display = this.value === 'other' ? 'block' : 'none';
+            if (this.value === 'other') document.getElementById('otherText').focus();
+        });
+    });
+
+    // Desktop Agent Activity Panel
+    const agentPanel = document.getElementById('agentPanel');
+    const activityData = data.activitySummary;
+    const agentIsConnected = data.hasActivityData && activityData && activityData.agentConnected;
+    if (data.hasActivityData) {
+        agentPanel.style.display = '';
+        if (agentIsConnected) {
+            document.getElementById('agentWaiting').style.display = 'none';
+            document.getElementById('agentGrid').style.display = '';
+            document.getElementById('agentBadge').textContent = 'CONNECTED';
+            document.getElementById('agentBadge').classList.add('info');
+            document.getElementById('agentActiveApp').textContent = activityData.currentApp || '—';
+            const agentSt = data.agentStatus;
+            // Connection status
+            const connEl = document.getElementById('agentConnectionStatus');
+            if (agentSt && agentSt.isIdle) {
+                connEl.textContent = 'Idle';
+                connEl.style.color = 'var(--text-muted)';
+                document.getElementById('agentBadge').textContent = 'IDLE';
+            } else {
+                connEl.textContent = 'Connected';
+                connEl.style.color = 'var(--success)';
+            }
+            document.getElementById('agentLastApp').textContent = agentSt && agentSt.activeApp ? agentSt.activeApp : '—';
+            document.getElementById('agentEvents').textContent = agentSt ? agentSt.eventCount || 0 : 0;
+            document.getElementById('agentFocusChanges').textContent = agentSt ? agentSt.focusChanges || 0 : 0;
+            // Last activity
+            const lastActEl = document.getElementById('agentLastActivity');
+            if (agentSt && agentSt.isIdle && agentSt.idleSince) {
+                const idleMins = Math.round((Date.now() - new Date(agentSt.idleSince).getTime()) / 60000);
+                lastActEl.textContent = idleMins > 0 ? `${idleMins}m ago` : 'Just now';
+            } else {
+                lastActEl.textContent = 'Just now';
+            }
+        } else {
+            // Has activity data but agent not connected (historical)
+            document.getElementById('agentWaiting').style.display = 'none';
+            document.getElementById('agentGrid').style.display = '';
+            document.getElementById('agentBadge').textContent = 'DISCONNECTED';
+            document.getElementById('agentConnectionStatus').textContent = 'Disconnected';
+            document.getElementById('agentConnectionStatus').style.color = 'var(--danger)';
+            if (activityData) {
+                document.getElementById('agentActiveApp').textContent = activityData.currentApp || '—';
+                document.getElementById('agentLastApp').textContent = activityData.currentApp || '—';
+                document.getElementById('agentEvents').textContent = activityData.focusChanges || 0;
+                document.getElementById('agentFocusChanges').textContent = activityData.focusChanges || 0;
+                document.getElementById('agentLastActivity').textContent = 'Session ended';
+            }
+        }
+    } else {
+        // No activity data - show waiting message
+        agentPanel.style.display = '';
+        document.getElementById('agentGrid').style.display = 'none';
+        document.getElementById('agentWaiting').style.display = '';
+    }
+    // Toggle manual distraction button based on agent status
+    // When agent is connected: idle-return popup is primary, show small fallback link
+    // When agent is not connected: show full "I Got Distracted" button
+    const btnDistracted = document.getElementById('btnDistracted');
+    const btnFallback = document.getElementById('btnManualFallback');
+    if (agentIsConnected) {
+        btnDistracted.style.display = 'none';
+        btnFallback.style.display = '';
+    } else {
+        btnDistracted.style.display = '';
+        btnFallback.style.display = 'none';
+    }
+
+    // Modal: submit
+    document.getElementById('distractionForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const btn = document.getElementById('confessBtn');
+        btn.disabled = true;
+        btn.textContent = 'Judging...';
+
+        const selected = document.querySelector('#distractionForm input[name="disappearance"]:checked').value;
+        const customLocation = selected === 'other' ? (document.getElementById('otherText').value || 'Something mysterious') : null;
+
+        const result = await apiPost('save-disappearance', {
+            sessionId: session.sessionId,
+            disappearanceType: selected,
+            customLocation,
+            mood: session.mood || 'lazy',
+            interests: session.interests || [],
+        });
+
+        document.getElementById('distractionForm').style.display = 'none';
+        document.getElementById('modalResponse').style.display = '';
+
+        if (result.success) {
+            document.getElementById('modalResponseText').innerHTML = `"${result.data.aiResponse.replace(/\n/g, '<br>')}"`;
+            showNotification('Logged. 📝', 'success');
+        } else {
+            const fallback = selected === 'other'
+                ? `You confessed: "${customLocation}"\nThe AI logged this.`
+                : fallbackResponses[selected] || "The AI couldn't think of anything.";
+            document.getElementById('modalResponseText').innerHTML = `"${fallback.replace(/\n/g, '<br>')}"`;
+            showNotification('Logged with fallback. 😄', 'info');
+        }
+
+        setTimeout(async () => {
+            const fresh = await fetchSessionData();
+            if (fresh) {
+                const n = (fresh.disappearances || []).length;
+                document.getElementById('statDistractions').textContent = n;
+                document.getElementById('statDisSub').textContent = `${n} vanish${n > 1 ? 'es' : ''}`;
+                document.getElementById('statRoasts').textContent = n;
+                document.getElementById('sbDistractions').textContent = n;
+            }
+        }, 500);
+    });
+
+    // Idle Return Modal: submit
+    document.getElementById('idleReturnForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const btn = document.getElementById('idleReturnSubmitBtn');
+        btn.disabled = true;
+        btn.textContent = 'Judging...';
+
+        const selected = document.querySelector('#idleReturnForm input[name="idleReason"]:checked');
+        if (!selected) {
+            btn.disabled = false;
+            btn.textContent = 'Submit';
+            return;
+        }
+
+        const reasonType = selected.value;
+        const customReason = reasonType === 'other' ? (document.getElementById('idleReturnOtherText').value || 'Something mysterious') : '';
+
+        const result = await apiPost('save-return-reason', {
+            sessionId: session.sessionId,
+            reasonType: reasonType,
+            customReason: customReason,
+            idleDurationSeconds: lastIdleDurationSeconds,
+        });
+
+        document.getElementById('idleReturnForm').style.display = 'none';
+        document.getElementById('idleReturnResponse').style.display = '';
+
+        if (result.success) {
+            document.getElementById('idleReturnResponseText').innerHTML = `"${result.data.aiResponse.replace(/\n/g, '<br>')}"`;
+            showNotification('Logged. 📝', 'success');
+
+            // Refresh dashboard stats
+            setTimeout(async () => {
+                const fresh = await fetchSessionData();
+                if (fresh) {
+                    const n = (fresh.disappearances || []).length;
+                    document.getElementById('statDistractions').textContent = n;
+                    document.getElementById('statDisSub').textContent = `${n} vanish${n > 1 ? 'es' : ''}`;
+                    document.getElementById('statRoasts').textContent = n;
+                    document.getElementById('sbDistractions').textContent = n;
+                }
+            }, 500);
+        } else {
+            document.getElementById('idleReturnResponseText').textContent = 'The AI was too busy procrastinating to comment.';
+            showNotification('Logged with fallback. 😄', 'info');
+        }
+    });
+
+    document.getElementById('idleReturnModal').addEventListener('click', function(e) {
+        if (e.target === this) closeIdleReturnModal();
+    });
+
+    document.getElementById('distractionModal').addEventListener('click', function (e) {
+        if (e.target === this) closeDistractionModal();
+    });
 });
 </script>
 {% endblock %}
