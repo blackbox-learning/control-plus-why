@@ -10,7 +10,7 @@
 
 **Target Users:** Creators, students, developers, and anyone who procrastinates and can appreciate self-aware humor about it.
 
-**How it works:** Users enter their tasks, mood, and interests. The AI predicts exactly how they'll procrastinate throughout the day. When users get distracted, they manually click "I Got Distracted" and log where they went. The AI roasts them. When the desktop agent detects the user returning from an idle period (10+ minutes away), an idle-return popup asks where they went and generates an AI reaction. At day's end, they click "Stop My Day" (which auto-disconnects the agent) and get a full report with real activity metrics, a procrastination score, achievements, and an AI summary. Session recovery ensures no data is lost if the browser closes or the server restarts.
+**How it works:** Users enter their tasks, mood, and interests on the Setup page. When they click "Start My Day", the session is created and the desktop agent is automatically launched in the background. The AI predicts exactly how they'll procrastinate throughout the day on the Prediction page. The dashboard shows live agent status — when the agent is connected, the manual "I Got Distracted" button is hidden and the agent becomes the primary source of behaviour data. When the agent detects 10+ minutes of idle (no keyboard/mouse), a **pending disappearance** is silently created in the background — no immediate popup. The user can continue working and review pending disappearances at their convenience via the "🕵️ Review Unexplained" button on the dashboard. Each pending disappearance can be **Explained** (select a reason → AI generates a reaction) or left as **"Remain A Mystery"** (unexplained). When the user clicks "Stop My Day", the system **blocks** session ending if there are pending disappearances — the user must resolve them one by one first. The end-of-day report shows an **Explained vs Unexplained** breakdown, longest disappearance, average duration, and an AI summary referencing explanation patterns and completion percentage. After all pending disappearances are resolved, the **Task Review Modal** appears — the user marks each task as Completed, In Progress, Partially Completed, Abandoned, or Never Started (with completion scores 100/75/50/25/0). If the agent is unavailable, the system falls back to manual "I Got Distracted" button mode. Session recovery ensures no data is lost if the browser closes or the server restarts.
 
 ---
 
@@ -79,6 +79,8 @@
 
 ## 3. Current Workflow
 
+### Automatic Workflow (Desktop Agent Available)
+
 ```
 User Opens Landing Page
         |
@@ -88,30 +90,115 @@ Setup Page: Enter tasks + select mood chips (7 options) + custom mood input
         |
 Select interest chips (7 options) + add custom interests via tag input
         |
-Submit Form -> API creates Session in database
+Submit Form -> API creates Session + auto-launches Desktop Agent
         |
-AI Generates Procrastination Prediction (5-7 step journey)
+AI Generates Full-Day Procrastination Forecast (8-14 step journey with durations)
         |
-Prediction Page: Timeline + confidence meter + AI warning -> "Accept My Fate"
+Prediction Page: Forecast metrics + journey timeline + natural breaks + AI warnings -> "Accept My Fate"
         |
-Dashboard: Status bar, floating "I Got Distracted" button, stats, tasks, leaderboard
+Dashboard: Agent auto-connects, "I Got Distracted" button hidden, agent panel shows green status
         |
-User Clicks "I Got Distracted" -> Modal with radio options appears
+User Works Normally -> Desktop Agent tracks active windows, app switching, idle periods
         |
-User selects distraction type -> AI generates roast response -> Saved to DB
+10 Minutes Idle (no keyboard/mouse) -> Pending Disappearance created SILENTLY (no popup)
         |
-Agent detects user returning from idle (10+ min) -> Idle-return popup appears
+User Returns -> Agent detects activity -> Dashboard pending badge updates (🕵️ Unexplained: N)
         |
-User selects reason -> AI generates reaction -> Saved as Disappearance
+User clicks "🕵️ Review Unexplained" (or waits until "Stop My Day")
         |
-User Clicks "Stop My Day" -> Agent auto-disconnects -> Session ends -> Auto-redirect to Report
+Pending Resolution Modal: Shows current disappearance (duration, last active app)
         |
-Report Page: Session length, active/idle time, distractions, score, achievements, AI summary
+User selects "Explain": Choose reason (or type custom) -> AI generates reaction -> Saved as [EXPLAINED]
         |
-Funny Reasons Page: AI-generated excuses for each unfinished task
+OR User selects "Remain A Mystery" -> Marked as [UNEXPLAINED]
+        |
+Repeat for each pending disappearance -> Continue Working
+        |
+User Clicks "Stop My Day" -> BLOCKED if pending exist -> Must resolve all first
+        |
+After all resolved -> Task Review Modal appears
+        |
+Task Review: Mark each task (Completed / In Progress / Partially Completed / Abandoned / Never Started)
+        |
+Completion scores stored (100/75/50/25/0) -> Agent auto-disconnects -> Session ends -> Auto-redirect to Report
+        |
+Report Page: Session length, active/idle time, disappearances, explained/unexplained breakdown,
+             longest disappearance, average duration, most common reason, focus changes,
+             top applications, category breakdown, idle summary, activity timeline,
+             Task Completion Summary with progress bar, What Happened To The Day analytics,
+             score, achievements, AI summary (references explained vs unexplained patterns + completion %)
+        |
+Funny Reasons Page: ✅ Completed badge on finished tasks, AI-generated excuses only for incomplete tasks, status badge on every card
 ```
 
-**All pages are fully connected to the backend API.** The frontend dynamically fetches real data and displays live stats.
+### Task Review & Completion Scoring
+
+When the user clicks "Stop My Day" (after all pending disappearances are resolved), the **Task Review Modal** is shown. Every task entered at Start My Day must be assigned a status:
+
+| Status | Label | Completion Score |
+|--------|-------|-----------------|
+| `completed` | Completed | 100 |
+| `in_progress` | In Progress | 75 |
+| `partially_completed` | Partially Completed | 50 |
+| `abandoned` | Abandoned | 25 |
+| `never_started` | Never Started | 0 |
+
+**Storage format** (future-proof):
+```json
+{
+  "Edit Video": { "status": "completed", "completion_score": 100 },
+  "Write Blog Post": { "status": "abandoned", "completion_score": 25 }
+}
+```
+
+**Completion Percentage** is calculated as the average of all task completion scores. This value is:
+- Stored in the session data API response as `completionPercentage`
+- Displayed on the report as a progress bar in the Task Completion Summary
+- Provided to AI prompts for more contextual summaries
+- Available for future analytics without additional migrations
+
+### Report Sections
+
+The report includes the following sections using only real collected data:
+
+- **Task Completion Summary** — All status counts (Completed, In Progress, Partially Completed, Abandoned, Never Started) + overall completion percentage progress bar
+- **Longest Disappearance** — Duration, reason, and last active app of the longest idle period
+- **What Happened To The Day** — Real analytics breakdown: Total Session, Active Work, Idle, per-app time, Unexplained time (no estimated values)
+- **Disappearance Timeline** — Each disappearance with [EXPLAINED] or [MYSTERY] badge
+- **Focus Changes** — Total app switches during the session
+- **Top Applications** — Ranked by time spent (with desktop agent)
+- **AI Summary** — Contextual summary referencing tasks planned, completion %, app usage, disappearances, and explained vs unexplained patterns
+
+### Pending Explanation Queue
+
+The core design principle: **Disappearances are detected automatically, but explained at the user's convenience.**
+
+1. **Silent Detection** — Agent detects 10+ min idle → creates a `pending` Disappearance (no popup)
+2. **Dashboard Badge** — Shows "🕵️ Unexplained: N" count, updated via 15s polling
+3. **Review Button** — "🕵️ Review Unexplained (N)" opens the resolution modal
+4. **Resolution Modal** — Shows disappearance context (duration, last active app), offers:
+   - **Explain**: Select from reason options (or type custom) → AI generates reaction → status = `explained`
+   - **Remain A Mystery**: Skip explanation → status = `unexplained`, location = "Unknown — Remained a Mystery"
+5. **Stop My Day Gate** — If pending disappearances exist, session end is blocked with a 400 error. The modal opens automatically, forcing one-by-one resolution. After all resolved, the session ends normally.
+6. **Report Integration** — Report shows Explained vs Unexplained counts, badges each disappearance, AI summary references explanation patterns
+
+### Fallback Workflow (Desktop Agent Unavailable)
+
+```
+Start My Day -> Session Created -> Agent launch fails silently
+        |
+Prediction -> Dashboard
+        |
+"Desktop Agent Not Connected — Manual Mode" label shown
+        |
+"I Got Distracted" button visible (primary workflow)
+        |
+User clicks button -> Modal -> Select reason -> AI roast -> Saved to DB
+        |
+Stop My Day -> Session ends -> Report (manual-only data)
+```
+
+**All pages are fully connected to the backend API.** The frontend dynamically fetches real data and displays live stats. The desktop agent is the primary data source when available; the manual button is a fallback.
 
 ---
 
@@ -134,9 +221,9 @@ Funny Reasons Page: AI-generated excuses for each unfinished task
 |-----|----------|-------------|
 | `/projects/procrastina-ai/` | `index.html` | Landing page with hero, floating stat cards, AI roast preview |
 | `/projects/procrastina-ai/setup/` | `setup.html` | Mood chips (7) + custom input, interest chips (7) + custom tag input, task input |
-| `/projects/procrastina-ai/prediction/` | `prediction.html` | AI-generated timeline, confidence bar, AI warning |
-| `/projects/procrastina-ai/dashboard/` | `dashboard.html` | Status bar, floating "I Got Distracted" button, stats grid, task list, leaderboard, AI observations |
-| `/projects/procrastina-ai/report/` | `report.html` | Gated (locked until "Stop My Day"), session metrics, achievements, AI summary |
+| `/projects/procrastina-ai/prediction/` | `prediction.html` | Full-day forecast: journey timeline, natural breaks, metrics, AI warnings |
+| `/projects/procrastina-ai/dashboard/` | `dashboard.html` | Agent status panel, auto-hide "I Got Distracted" button when agent connected, stats grid, task list, leaderboard, AI observations |
+| `/projects/procrastina-ai/report/` | `report.html` | Gated (locked until "Stop My Day"), session metrics, disappearances, focus changes, top apps, idle summary, achievements, AI summary |
 | `/projects/procrastina-ai/funny-reasons/` | `funny_reasons.html` | Per-task AI excuses with copy/regenerate |
 
 **Report Gating:** The report page is inaccessible until the user clicks "Stop My Day". If they navigate to `/report/` while the session is active, they see: *"Your day is still running. Finish your procrastination journey first."*
@@ -159,6 +246,7 @@ Funny Reasons Page: AI-generated excuses for each unfinished task
 | mood | CharField(50) | User's mood selection |
 | interests | JSONField | List of interests (preset + custom) |
 | tasks | JSONField | List of planned tasks |
+| task_statuses | JSONField | Task status map: `{"task": {"status": "completed", "completion_score": 100}}` |
 | is_active | BooleanField | Session active or ended |
 | active_seconds | FloatField | Browser-tracked active time |
 | ended_at | DateTimeField | When "Stop My Day" was clicked |
@@ -173,6 +261,11 @@ Funny Reasons Page: AI-generated excuses for each unfinished task
 | disappearance_type | CharField(100) | youtube, laptops, ai_tools, startup, comments, other |
 | custom_location | CharField(255) | Custom distraction if "other" |
 | ai_response | TextField | AI-generated roast |
+| explanation_status | CharField(20) | 'pending', 'explained', 'unexplained' (default: 'pending') |
+| explanation_timestamp | DateTimeField | When the user explained it (null if pending/unexplained) |
+| reason_source | CharField(20) | 'user_selected', 'user_typed', 'auto_generated' |
+| idle_duration_seconds | FloatField | How long the idle period was (null if manual) |
+| last_active_app | CharField(100) | App focused before idle started (null if manual) |
 | created_at | DateTimeField | Timestamp |
 
 #### Report
@@ -229,7 +322,7 @@ Session (1) ──→ (N) ActivitySession ──→ (N) ActivityLog
 
 ### AI Services (`services.py`)
 5 AI generation functions using OpenRouter free models with automatic model fallback:
-- `generate_prediction()` — 5-7 step procrastination journey
+- `generate_prediction()` — Full-day procrastination forecast with journey, breaks, metrics, warnings
 - `generate_disappearance_response()` — Witty roast for each distraction
 - `generate_daily_report()` — Humorous end-of-day summary
 - `generate_funny_reasons()` — 3-4 absurd excuses per task
@@ -292,7 +385,7 @@ Activity API Views → Parse JSON → desktop_integration.py → activity_servic
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/create-session/` | Start My Day — create session with mood, interests, tasks |
-| POST | `/api/generate-prediction/` | AI prediction journey |
+| POST | `/api/generate-prediction/` | Full-day forecast (journey, breaks, metrics, warnings) |
 | POST | `/api/save-disappearance/` | Log distraction + get AI roast |
 | POST | `/api/end-session/` | Stop My Day — end session, auto-end agent, store activity data |
 | POST | `/api/generate-report/` | Generate daily report (auto-detects activity data) |
@@ -300,14 +393,20 @@ Activity API Views → Parse JSON → desktop_integration.py → activity_servic
 | GET | `/api/session-data/?sessionId=xxx` | Full session data + stats + agent status |
 | POST | `/api/activity-heartbeat/` | Browser activity tracker heartbeat |
 
-### Idle Return + Session Recovery APIs (used by frontend)
+### Pending Explanation Queue + Session Recovery APIs (used by frontend)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/api/idle-return-options/?sessionId=xxx` | AI-generated contextual distraction options for idle-return popup |
 | POST | `/api/save-return-reason/` | Save idle-return reason as Disappearance + AI reaction |
+| GET | `/api/pending-disappearances/?sessionId=xxx` | Get all pending (unexplained) disappearances with context |
+| POST | `/api/explain-disappearance/` | Explain a pending disappearance (select reason + get AI response) |
+| POST | `/api/skip-disappearance/` | Skip explaining a pending disappearance ("Remain A Mystery") |
 | GET | `/api/recover-session/` | Server-side session recovery (most recent active session) |
 | POST | `/api/agent-disconnect/` | Force-end active agent ActivitySession |
+| POST | `/api/agent-launch/` | Launch desktop agent as background subprocess |
+
+**End-Session Blocking:** `POST /api/end-session/` checks for pending disappearances. If any exist, it returns a 400 error with `hasPendingDisappearances: true` and `pendingCount`. A `forceEnd: true` flag bypasses this check after all have been resolved.
 
 ### Activity Tracking APIs (used by Windows desktop agent)
 
@@ -440,10 +539,7 @@ control-plus-why/
     │   └── test_report_generation.py  # 8 tests — reports + idle-return options
     ├── docs/
     │   ├── DOCUMENTATION.md           # This file
-    │   ├── GETTING_STARTED.md         # Beginner's guide
-    │   ├── FUTURE_DESKTOP_TRACKING.md # Desktop agent architecture
-    │   ├── PROJECT_HEALTH_CHECK.md    # System health status (all components)
-    │   └── SYSTEM_TEST_REPORT.md      # Test execution results (39 tests)
+    │   └── GETTING_STARTED.md         # Beginner's guide
     ├── migrations/
     │   ├── 0001_initial.py
     │   ├── 0002_...py
@@ -518,7 +614,7 @@ A Windows desktop agent (`procrastina_agent/`) is fully implemented and tested.
 | `config.py` | All configurable values (URLs, thresholds, buffer sizes) |
 | `test_integration.py` | Full lifecycle smoke test (8/8 checks passed) |
 
-Full implementation details: `procrastina_agent/README.md` and `procrastina_ai/docs/FUTURE_DESKTOP_TRACKING.md`
+Full implementation details: `procrastina_agent/README.md` and `procrastina_ai/docs/DOCUMENTATION.md`
 
 ---
 
@@ -545,7 +641,10 @@ Full implementation details: `procrastina_agent/README.md` and `procrastina_ai/d
 ## 15. Current Status
 
 ### Fully Working
-- Complete manual workflow (Setup → Prediction → Dashboard → Report → Funny Reasons)
+- Complete manual workflow (Setup → Prediction → Dashboard → Task Review → Report → Funny Reasons)
+- Full-day procrastination forecast with 8-14 journey steps, durations, risk/recovery probabilities
+- Natural breaks (coffee, lunch, existential crisis), forecast metrics, AI warnings
+- Prediction data stored in database for future report comparisons (predicted vs actual)
 - All pages connected to backend APIs with real data
 - AI features via OpenRouter free models with fallback
 - Report gating (locked until "Stop My Day")
@@ -554,11 +653,31 @@ Full implementation details: `procrastina_agent/README.md` and `procrastina_ai/d
 - Custom mood and interest inputs with tag system
 - Status bar with live stats on dashboard
 - Per-page navigation customization
-- Idle-return popup with AI-generated contextual options
 - Session recovery (localStorage + server-side)
 - Auto-disconnect agent on "Stop My Day"
 - Agent status panel with live polling (15s interval)
+- Task Review Modal with 5 statuses + completion scores
+- Task Completion Summary with progress bar on report
+- What Happened To The Day real analytics section on report
+- Longest Disappearance section on report
+- Completion Percentage calculated from average task scores
+- Enhanced AI prompts with completion %, focus changes, activity timeline
+- Funny Reasons: status badges on all cards, no excuses for completed tasks
+- Future-proof task storage format (object with status + completion_score)
 - 39-test comprehensive test suite (all passing)
+
+### Pending Explanation Queue (Implemented)
+- Auto-detected disappearances: Agent detects 10+ min idle → silently creates pending Disappearance
+- Dashboard pending badge: "🕵️ Unexplained: N" updates via 15s polling
+- Review button: "🕵️ Review Unexplained (N)" opens resolution modal at user's convenience
+- Pending Resolution Modal: Shows duration, last active app, reason selection, AI response
+- Explain or Remain A Mystery: Each disappearance can be explained (status = explained) or skipped (status = unexplained)
+- Stop My Day blocking: Session end returns 400 if pending exist; modal opens automatically
+- Force-end after resolution: After all pending resolved, session ends with `forceEnd: true`
+- Report integration: Explained/Unexplained count cards, [EXPLAINED]/[MYSTERY] badges, longest/average duration stats
+- AI summary references explained vs unexplained patterns in report prompts
+- 3 new API endpoints: pending-disappearances (GET), explain-disappearance (POST), skip-disappearance (POST)
+- Disappearance model extended: explanation_status, explanation_timestamp, reason_source, idle_duration_seconds, last_active_app
 
 ### Desktop Agent (Implemented)
 - Windows desktop agent (`procrastina_agent/`) fully built and tested
@@ -574,7 +693,7 @@ Full implementation details: `procrastina_agent/README.md` and `procrastina_ai/d
 - 5 activity tracking models in database
 - 7 activity API endpoints (including idle-end)
 - Desktop integration layer (`desktop_integration.py`) for validation and normalization
-- Activity service layer (`activity_services.py`) with analytics and timeline
+- Activity service layer (`activity_services.py`) with analytics, timeline, and explanation stats
 - Auto-categorization of 40+ apps/websites
 - Process name normalization (`code.exe` → `Visual Studio Code`)
 - Enhanced report generation with dual data source support

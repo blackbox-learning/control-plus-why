@@ -145,16 +145,18 @@ def get_active_window() -> Optional[WindowInfo]:
 
         # Skip the desktop shell and system processes
         if process_name.lower() in IGNORED_PROCESSES:
+            logger.debug(f"Skipping ignored process: {process_name}")
             return WindowInfo(real_hwnd, title, process_name, pid, is_valid=False)
 
         # Skip untitled windows (minimized to tray, splash screens)
         if not title:
+            logger.debug(f"Skipping untitled window: process={process_name}")
             return WindowInfo(real_hwnd, title, process_name, pid, is_valid=False)
 
         return WindowInfo(real_hwnd, title, process_name, pid, is_valid=True)
 
     except Exception as e:
-        logger.error(f"Failed to read active window: {e}")
+        logger.error(f"Failed to read active window: {e}", exc_info=True)
         return None
 
 

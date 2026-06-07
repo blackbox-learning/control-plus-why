@@ -318,6 +318,11 @@ const AgentPoller = (function() {
         const panel = document.getElementById('agentPanel');
         if (!panel) return;
 
+        // Update pending disappearances badge if function exists
+        if (typeof updatePendingBadge === 'function' && data.pendingDisappearanceCount !== undefined) {
+            updatePendingBadge(data.pendingDisappearanceCount);
+        }
+
         const activityData = data.activitySummary;
         const agentStatus = data.agentStatus;
         const isConnected = data.hasActivityData && agentStatus && agentStatus.agentConnected;
@@ -329,9 +334,13 @@ const AgentPoller = (function() {
             if (isConnected) {
                 btnDistracted.style.display = 'none';
                 btnFallback.style.display = '';
+                const modeLabel = document.getElementById('agentModeLabel');
+                if (modeLabel) modeLabel.style.display = 'none';
             } else {
                 btnDistracted.style.display = '';
                 btnFallback.style.display = 'none';
+                const modeLabel = document.getElementById('agentModeLabel');
+                if (modeLabel) modeLabel.style.display = '';
             }
         }
 

@@ -54,6 +54,12 @@ class Session(models.Model):
         default=False,
         help_text="Whether enough activity data was collected for accurate reporting"
     )
+
+    # Task completion review (filled during Stop My Day flow)
+    task_statuses = models.JSONField(
+        default=dict,
+        help_text="Task completion statuses: {task_name: {status, completion_score}}"
+    )
     
     class Meta:
         ordering = ['-created_at']
@@ -68,6 +74,12 @@ class Disappearance(models.Model):
     """
     Tracks where user "disappeared" to during their procrastination session.
     Stores the type of disappearance and AI-generated response.
+
+    EXPLANATION WORKFLOW:
+      - When idle period ends (user returns), a Disappearance is auto-created
+        with explanation_status='pending'.
+      - User can explain it later (dashboard) or before Stop My Day.
+      - 'explained' = user provided a reason, 'unexplained' = user skipped.
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     
@@ -90,6 +102,7 @@ class Disappearance(models.Model):
             ('comments', 'Reading Comments'),
             ('other', 'Other (custom location)'),
         ],
+        default='other',
         help_text="Where the user disappeared to"
     )
     custom_location = models.CharField(
@@ -104,6 +117,58 @@ class Disappearance(models.Model):
         blank=True,
         help_text="AI-generated witty response about the disappearance"
     )
+
+    # ============================================================
+    # PENDING EXPLANATION QUEUE
+    # ============================================================
+    EXPLANATION_STATUS_CHOICES = [
+        ('pending', 'Pending Explanation'),
+        ('explained', 'Explained by User'),
+        ('unexplained', 'User Chose to Remain a Mystery'),
+    ]
+    explanation_status = models.CharField(
+        max_length=20,
+        choices=EXPLANATION_STATUS_CHOICES,
+        default='pending',
+        help_text="Whether user has explained this disappearance"
+    )
+
+    explanation_timestamp = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When user provided the explanation"
+    )
+
+    REASON_SOURCE_CHOICES = [
+        ('auto_generated', 'Auto-created from idle detection'),
+        ('user_selected', 'User picked from preset options'),
+        ('custom_text', 'User typed a custom reason'),
+    ]
+    reason_source = models.CharField(
+        max_length=20,
+        choices=REASON_SOURCE_CHOICES,
+        blank=True,
+        default='',
+        help_text="How the disappearance reason was determined"
+    )
+
+    # Context from the desktop agent (stored when idle ended)
+    idle_duration_seconds = models.FloatField(
+        default=0,
+        help_text="How long the idle period lasted (seconds)"
+    )
+    last_active_app = models.CharField(
+        max_length=255,
+        blank=True,
+        default='',
+        help_text="Application focused before this disappearance"
+    )
+    last_window_title = models.CharField(
+        max_length=500,
+        blank=True,
+        default='',
+        help_text="Window title before this disappearance"
+    )
     
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
@@ -114,7 +179,7 @@ class Disappearance(models.Model):
         verbose_name_plural = 'Disappearances'
     
     def __str__(self):
-        return f"Disappearance - {self.disappearance_type}"
+        return f"Disappearance - {self.disappearance_type} ({self.explanation_status})"
 
 
 class Report(models.Model):
@@ -169,6 +234,78 @@ class Report(models.Model):
     
     def __str__(self):
         return f"Report - {self.report_date}"
+
+
+class Prediction(models.Model):
+    """
+    Stores the AI-generated procrastination forecast for a session.
+
+    The prediction simulates the user's entire workday as a humorous
+    'weather forecast for procrastination', including journey steps
+    with durations, natural breaks, and forecast metrics.
+
+    Used later by reports to compare predicted vs actual day.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    # Link to the session this prediction was generated for
+    session = models.ForeignKey(
+        Session,
+        on_delete=models.CASCADE,
+        related_name='predictions',
+        help_text="Session this prediction belongs to"
+    )
+
+    # Forecast headline (e.g. "High chance of AI tool exploration. Moderate chance of productivity.")
+    forecast_summary = models.TextField(
+        blank=True,
+        help_text="AI-generated forecast headline"
+    )
+
+    # Journey steps with durations, distraction risk, recovery chance
+    # Format: [{"title": "...", "duration": "25 min", "distractionRisk": "Low", "recoveryChance": "High", "icon": "..."}]
+    journey = models.JSONField(
+        default=list,
+        help_text="Full-day journey steps with durations and probabilities"
+    )
+
+    # Natural breaks (coffee, lunch, etc.)
+    # Format: [{"title": "Coffee Mission", "duration": "10-20 Minutes", "icon": "\u2615"}]
+    natural_breaks = models.JSONField(
+        default=list,
+        help_text="AI-generated natural workday breaks"
+    )
+
+    # Forecast metrics
+    # Format: {"productivity": 68, "distraction": 83, "completion": 21, "mainDistraction": "AI Tools"}
+    metrics = models.JSONField(
+        default=dict,
+        help_text="Predicted productivity, distraction, completion scores and main distraction"
+    )
+
+    # AI warnings
+    # Format: ["Today's plan contains 4 tasks...", "The AI is strangely confident..."]
+    warnings = models.JSONField(
+        default=list,
+        help_text="AI-generated warning messages"
+    )
+
+    # Prediction confidence (0-100)
+    confidence = models.IntegerField(
+        default=94,
+        help_text="How confident the AI is about this prediction"
+    )
+
+    # Timestamp
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Prediction'
+        verbose_name_plural = 'Predictions'
+
+    def __str__(self):
+        return f"Prediction - {self.session_id} ({self.created_at.date()})"
 
 
 # ============================================================

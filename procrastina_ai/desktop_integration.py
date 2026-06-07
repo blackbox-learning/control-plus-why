@@ -60,8 +60,11 @@ NORMALIZATION MAP:
 
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
+import logging
 from . import activity_services
-from .models import Session, ActivitySession
+from .models import Session, ActivitySession, Disappearance
+
+logger = logging.getLogger(__name__)
 
 
 # ============================================================
@@ -345,7 +348,9 @@ def process_activity_event(data):
                 'last_active_app', 'focus_change_count', 'updated_at'
             ])
         except ActivitySession.DoesNotExist:
-            pass
+            logger.error(
+                f"ActivitySession not found during focus detection: {activity_session_id}"
+            )
 
     # Store event via activity_services
     result = activity_services.log_activity_event(
@@ -437,7 +442,9 @@ def process_batch_events(data):
                 'focus_change_count', 'last_active_app', 'updated_at'
             ])
         except ActivitySession.DoesNotExist:
-            pass
+            logger.error(
+                f"ActivitySession not found during batch focus update: {activity_session_id}"
+            )
 
         result['data']['focusChanges'] = focus_changes
 
@@ -484,7 +491,9 @@ def process_idle_start(data):
             act_session.last_idle_started = started_at
         act_session.save(update_fields=['last_idle_started', 'updated_at'])
     except ActivitySession.DoesNotExist:
-        pass
+        logger.error(
+            f"ActivitySession not found during idle start: {activity_session_id}"
+        )
 
     return activity_services.log_idle_period(
         activity_session_id=activity_session_id,
@@ -495,6 +504,40 @@ def process_idle_start(data):
         last_active_app=last_app,
         last_active_domain=data.get('lastActiveDomain', ''),
     )
+
+
+def _create_pending_disappearance(activity_session, idle_period):
+    """
+    Create a pending Disappearance record from a closed idle period.
+
+    Called automatically when an idle period ends (user returns from idle).
+    The Disappearance starts with explanation_status='pending' and waits
+    for the user to explain it on the dashboard or before Stop My Day.
+
+    Args:
+        activity_session (ActivitySession): The activity session
+        idle_period (IdlePeriod): The closed idle period
+
+    Returns:
+        Disappearance or None: Created record, or None on failure
+    """
+    try:
+        session = activity_session.session
+        dis = Disappearance.objects.create(
+            session=session,
+            disappearance_type='other',
+            custom_location='',
+            ai_response='',
+            explanation_status='pending',
+            reason_source='auto_generated',
+            idle_duration_seconds=idle_period.duration_seconds,
+            last_active_app=idle_period.last_active_app or '',
+            last_window_title='',
+        )
+        return dis
+    except Exception as e:
+        logger.error(f"Failed to create pending Disappearance: {e}", exc_info=True)
+        return None
 
 
 def process_idle_end(data):
@@ -552,11 +595,15 @@ def process_idle_end(data):
                 'total_idle_seconds', 'last_idle_started', 'updated_at'
             ])
 
+            # Auto-create pending Disappearance from this idle period
+            pending = _create_pending_disappearance(act_session, open_idle)
+
             return {
                 'success': True,
                 'data': {
                     'idlePeriodId': str(open_idle.id),
                     'durationSeconds': open_idle.duration_seconds,
+                    'pendingDisappearanceId': str(pending.id) if pending else None,
                 }
             }
         else:
@@ -584,7 +631,7 @@ def process_end_session(data):
     if not activity_session_id:
         return {'success': False, 'error': 'activitySessionId required'}
 
-    # Auto-close any open idle periods
+    # Auto-close any open idle periods and create pending Disappearances
     from .models import IdlePeriod
     try:
         act_session = ActivitySession.objects.get(id=activity_session_id)
@@ -595,10 +642,14 @@ def process_end_session(data):
             idle.duration_seconds = (now - idle.started_at).total_seconds()
             idle.save()
             act_session.total_idle_seconds += idle.duration_seconds
+            # Create pending Disappearance for each auto-closed idle period
+            _create_pending_disappearance(act_session, idle)
         act_session.last_idle_started = None
         act_session.save(update_fields=['total_idle_seconds', 'last_idle_started', 'updated_at'])
     except ActivitySession.DoesNotExist:
-        pass
+        logger.error(
+            f"ActivitySession not found during end session cleanup: {activity_session_id}"
+        )
 
     return activity_services.end_activity_session(activity_session_id)
 

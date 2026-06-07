@@ -73,13 +73,33 @@ class AgentState:
 # ============================================================
 
 def setup_logging():
-    """Configure structured logging to stdout."""
-    logging.basicConfig(
-        level=getattr(logging, config.LOG_LEVEL, logging.INFO),
-        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        datefmt="%H:%M:%S",
-        stream=sys.stdout,
+    """Configure structured logging to both stdout and a log file."""
+    import os
+    # Create logs directory
+    logs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
+    os.makedirs(logs_dir, exist_ok=True)
+    log_file = os.path.join(logs_dir, 'agent.log')
+
+    root_logger = logging.getLogger()
+    root_logger.setLevel(getattr(logging, config.LOG_LEVEL, logging.INFO))
+
+    # Formatter
+    fmt = logging.Formatter(
+        "%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
+
+    # Stdout handler
+    stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_handler.setFormatter(fmt)
+    root_logger.addHandler(stdout_handler)
+
+    # File handler (append mode so multiple runs don't overwrite)
+    file_handler = logging.FileHandler(log_file, encoding='utf-8')
+    file_handler.setFormatter(fmt)
+    root_logger.addHandler(file_handler)
+
+    logger.info(f"Log file: {log_file}")
 
 
 # ============================================================
@@ -147,6 +167,12 @@ def tracking_loop(state: AgentState, client: APIClient):
             time.sleep(config.TRACKING_INTERVAL_SECONDS)
             continue
 
+        # Log detected active window
+        logger.info(
+            f"Active Window Detected: process={window.process_name!r}, "
+            f"title={window.title!r}, pid={window.pid}"
+        )
+
         # Detect focus switch
         if state.current_app is not None and not _is_same_process(state.current_app, window.process_name):
             # App switched — emit blur for previous app, focus for new app
@@ -159,8 +185,8 @@ def tracking_loop(state: AgentState, client: APIClient):
             state.event_buffer.append(focus_event)
 
             state.focus_switch_count += 1
-            logger.debug(
-                f"Focus switch: {state.current_app} → {window.process_name} "
+            logger.info(
+                f"Focus Changed: {state.current_app} → {window.process_name} "
                 f"(after {duration:.0f}s)"
             )
 
@@ -245,6 +271,7 @@ def make_on_idle_start(state: AgentState, client: APIClient):
     """Return a callback for when idle starts."""
     def on_idle_start(idle_start_time: datetime):
         state.is_idle = True
+        logger.info(f"Idle Started at {idle_start_time.isoformat()} (last app: {state.current_app})")
         # Log a blur event for the currently focused app before idle
         if state.current_app:
             duration = _elapsed_focus(state)
@@ -267,6 +294,10 @@ def make_on_idle_end(state: AgentState, client: APIClient):
     """Return a callback for when idle ends (activity resumes)."""
     def on_idle_end(idle_end_time: datetime, duration_seconds: float):
         state.is_idle = False
+        logger.info(
+            f"Idle Ended at {idle_end_time.isoformat()} "
+            f"(duration: {duration_seconds:.0f}s / {duration_seconds/60:.1f}min)"
+        )
         client.log_idle_end(
             ended_at=idle_end_time,
             duration_seconds=duration_seconds,

@@ -9,7 +9,7 @@ Register models for admin panel so admins can view:
 
 from django.contrib import admin
 from .models import (
-    Session, Disappearance, Report,
+    Session, Disappearance, Report, Prediction,
     ActivitySession, ActivityLog, ApplicationUsage,
     WebsiteUsage, IdlePeriod,
 )
@@ -80,6 +80,18 @@ class ReportAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+
+@admin.register(Prediction)
+class PredictionAdmin(admin.ModelAdmin):
+    """
+    Admin interface for Prediction model.
+    Stores the full-day procrastination forecast for each session.
+    """
+    list_display = ['id', 'session', 'confidence', 'created_at']
+    list_filter = ['confidence', 'created_at']
+    search_fields = ['id', 'session__id']
+    readonly_fields = ['id', 'created_at']
 
 
 # ============================================================

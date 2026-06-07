@@ -4,6 +4,8 @@ ProcrastinaAI Desktop Agent — Configuration
 All configurable values for the agent. Modify these to match your setup.
 """
 
+import os
+
 # ============================================================
 # Backend Connection
 # ============================================================
@@ -32,8 +34,9 @@ AGENT_PLATFORM = "windows"
 TRACKING_INTERVAL_SECONDS = 2
 
 # How long (in seconds) of no keyboard/mouse input before idle is declared.
-# 300 seconds = 5 minutes.
-IDLE_THRESHOLD_SECONDS = 300
+# 600 seconds = 10 minutes. Matches the automatic workflow: when the user
+# steps away for 10 minutes, the idle-return popup fires on return.
+IDLE_THRESHOLD_SECONDS = int(os.environ.get('IDLE_THRESHOLD_SECONDS', 600))
 
 # How many events to buffer before sending a batch to the backend.
 # Batching reduces HTTP overhead. 10 events ≈ 20 seconds of normal use.

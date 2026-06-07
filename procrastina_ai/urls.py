@@ -73,6 +73,22 @@ urlpatterns = [
     # Save idle-return reason as Disappearance + get AI reaction
     path('api/save-return-reason/', views.api_save_return_reason, name='api_save_return_reason'),
 
+    # GET /projects/procrastina-ai/api/pending-disappearances/?sessionId=xxx
+    # Get all pending (unexplained) disappearances for a session
+    path('api/pending-disappearances/', views.api_pending_disappearances, name='api_pending_disappearances'),
+
+    # POST /projects/procrastina-ai/api/explain-disappearance/
+    # User explains a pending disappearance (selects reason + gets AI response)
+    path('api/explain-disappearance/', views.api_explain_disappearance, name='api_explain_disappearance'),
+
+    # POST /projects/procrastina-ai/api/skip-disappearance/
+    # User skips explaining a pending disappearance ("Remain A Mystery")
+    path('api/skip-disappearance/', views.api_skip_disappearance, name='api_skip_disappearance'),
+
+    # POST /projects/procrastina-ai/api/save-task-review/
+    # Save task completion statuses during Stop My Day flow
+    path('api/save-task-review/', views.api_save_task_review, name='api_save_task_review'),
+
     # GET /projects/procrastina-ai/api/recover-session/
     # Recover active session after browser/server restart
     path('api/recover-session/', views.api_recover_session, name='api_recover_session'),
@@ -80,6 +96,10 @@ urlpatterns = [
     # POST /projects/procrastina-ai/api/agent-disconnect/
     # Force-end active agent ActivitySession during Stop My Day
     path('api/agent-disconnect/', views.api_agent_disconnect, name='api_agent_disconnect'),
+
+    # POST /projects/procrastina-ai/api/agent-launch/
+    # Launch the desktop agent as a background subprocess
+    path('api/agent-launch/', views.api_agent_launch, name='api_agent_launch'),
 
     # ============================================================
     # ACTIVITY TRACKING API — Desktop Agent

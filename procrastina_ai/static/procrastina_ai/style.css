@@ -23,6 +23,8 @@
   --danger-muted: rgba(239, 68, 68, 0.15);
   --success: #10b981;
   --success-muted: rgba(16, 185, 129, 0.15);
+  --warning: #f59e0b;
+  --warning-muted: rgba(245, 158, 11, 0.15);
   
   /* Text */
   --text: #fafafa;
@@ -886,12 +888,19 @@ a:hover {
 }
 
 .tl-step:nth-child(1) { animation-delay: 0.1s; }
-.tl-step:nth-child(2) { animation-delay: 0.2s; }
-.tl-step:nth-child(3) { animation-delay: 0.3s; }
-.tl-step:nth-child(4) { animation-delay: 0.4s; }
-.tl-step:nth-child(5) { animation-delay: 0.5s; }
-.tl-step:nth-child(6) { animation-delay: 0.6s; }
-.tl-step:nth-child(7) { animation-delay: 0.7s; }
+.tl-step:nth-child(2) { animation-delay: 0.15s; }
+.tl-step:nth-child(3) { animation-delay: 0.2s; }
+.tl-step:nth-child(4) { animation-delay: 0.25s; }
+.tl-step:nth-child(5) { animation-delay: 0.3s; }
+.tl-step:nth-child(6) { animation-delay: 0.35s; }
+.tl-step:nth-child(7) { animation-delay: 0.4s; }
+.tl-step:nth-child(8) { animation-delay: 0.45s; }
+.tl-step:nth-child(9) { animation-delay: 0.5s; }
+.tl-step:nth-child(10) { animation-delay: 0.55s; }
+.tl-step:nth-child(11) { animation-delay: 0.6s; }
+.tl-step:nth-child(12) { animation-delay: 0.65s; }
+.tl-step:nth-child(13) { animation-delay: 0.7s; }
+.tl-step:nth-child(14) { animation-delay: 0.75s; }
 
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(12px); }
@@ -928,6 +937,122 @@ a:hover {
 
 .tl-step.final .tl-body h3 {
   color: var(--danger);
+}
+
+/* Journey step meta row */
+.tl-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+}
+
+.tl-duration {
+  color: var(--text-muted);
+}
+
+.tl-risk,
+.tl-recovery {
+  padding: 0.15rem 0.5rem;
+  border-radius: 100px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  font-size: 0.72rem;
+}
+
+/* Risk colours */
+.tl-risk.risk-low   { background: var(--success-muted); color: var(--success); }
+.tl-risk.risk-med   { background: var(--accent-muted);  color: var(--accent);  }
+.tl-risk.risk-high  { background: var(--danger-muted);  color: var(--danger);  }
+
+/* Recovery colours */
+.tl-recovery.recovery-high { background: var(--success-muted); color: var(--success); }
+.tl-recovery.recovery-med  { background: var(--accent-muted);  color: var(--accent);  }
+.tl-recovery.recovery-low  { background: var(--danger-muted);  color: var(--danger);  }
+
+/* Forecast Section Titles */
+.fc-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 2rem 0 1rem;
+}
+
+/* Natural Breaks Grid */
+.fc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.fc-break-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem 1.25rem;
+}
+
+.fc-break-icon {
+  font-size: 1.5rem;
+}
+
+.fc-break-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.fc-break-duration {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+/* Forecast Metrics Grid */
+.fc-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.fc-metric-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  text-align: center;
+}
+
+.fc-metric-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.fc-metric-value {
+  font-family: var(--font-mono);
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+@media (max-width: 480px) {
+  .fc-metrics-grid,
+  .fc-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .ai-callout {
@@ -1263,6 +1388,66 @@ a:hover {
   margin-bottom: 1.25rem;
 }
 
+/* Task Review Modal */
+.task-review-item {
+  padding: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 0.75rem;
+}
+
+.task-review-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin-bottom: 0.6rem;
+  color: var(--text);
+}
+
+.task-review-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.task-review-option {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.78rem;
+  border: 1px solid transparent;
+  transition: all 0.15s;
+  background: rgba(255,255,255,0.03);
+}
+
+.task-review-option:hover {
+  background: var(--surface-hover);
+}
+
+.task-review-option:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-muted);
+}
+
+.task-review-option input[type="radio"] {
+  accent-color: var(--accent);
+  margin: 0;
+  width: 13px;
+  height: 13px;
+}
+
+.task-review-emoji {
+  font-size: 0.85rem;
+}
+
+.task-review-label {
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
 /* Session Ended Banner */
 .ended-banner {
   background: var(--accent-muted);
@@ -1573,6 +1758,21 @@ a:hover {
   .report-actions .btn {
     width: 100%;
   }
+
+  /* What Happened list: single column on mobile */
+  .what-happened-list {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Task summary stats: 2 columns on mobile */
+  #taskReviewStats {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Longest disappearance card: stack on mobile */
+  .longest-dis-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 /* ============================================================
@@ -1663,6 +1863,15 @@ a:hover {
   margin-top: 1rem;
   padding-top: 0.75rem;
   border-top: 1px solid var(--border);
+}
+
+.reason-status-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: 100px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
 /* ============================================================
@@ -1879,4 +2088,212 @@ a:hover {
 
 .custom-tag button:hover {
   opacity: 1;
+}
+
+/* ============================================================
+   RESPONSIVE FIXES
+   ============================================================ */
+
+/* Tablet (768px) */
+@media (max-width: 768px) {
+  /* Modals: ensure scrollable on shorter screens */
+  .pa-modal-content {
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+
+  /* Analytics grid: prevent overflow */
+  .analytics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Report: task review stats grid */
+  #taskReviewStats {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Status bar: tighten gap */
+  .status-bar {
+    gap: 0.75rem;
+    font-size: 0.78rem;
+  }
+
+  /* Funny reasons: full width cards */
+  .reason-actions {
+    flex-wrap: wrap;
+  }
+}
+
+/* Mobile (480px) */
+@media (max-width: 480px) {
+  /* Modals: full width, scrollable */
+  .pa-modal-overlay {
+    padding: 0.5rem;
+    align-items: flex-start;
+    padding-top: 2rem;
+  }
+
+  .pa-modal-content {
+    max-width: 100%;
+    border-radius: var(--radius-lg);
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+
+  .pa-modal-header {
+    padding: 1rem;
+  }
+
+  .pa-modal-body {
+    padding: 1rem;
+  }
+
+  .modal-headline {
+    font-size: 1.05rem;
+  }
+
+  /* Task review: stack options vertically */
+  .task-review-options {
+    flex-direction: column;
+  }
+
+  .task-review-option {
+    font-size: 0.82rem;
+    padding: 0.4rem 0.6rem;
+  }
+
+  /* Analytics grid: single column */
+  .analytics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Report: task review stats 2 columns on mobile */
+  #taskReviewStats {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Status bar: compact */
+  .status-bar {
+    gap: 0.5rem;
+    font-size: 0.72rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .status-item {
+    gap: 0.25rem;
+  }
+
+  /* Distracted button: smaller on mobile */
+  .btn-distracted-float {
+    font-size: 0.95rem;
+    padding: 1rem 2rem;
+  }
+
+  /* Funny reasons: compact cards */
+  .reason-card {
+    padding: 1rem;
+  }
+
+  .reason-card-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  /* Report: compact score */
+  .score-num {
+    font-size: 3rem;
+  }
+
+  /* Report: compact time hero */
+  .time-hero-value {
+    font-size: 2.5rem;
+  }
+
+  /* Notifications: full width on mobile */
+  .notifications-container {
+    right: 0.5rem;
+    left: 0.5rem;
+    max-width: none;
+  }
+}
+
+/* Very small screens (320px) */
+@media (max-width: 360px) {
+  body, .pa-body {
+    font-size: 14px;
+  }
+
+  .pa-main {
+    padding: 1rem 0.5rem;
+  }
+
+  .pa-modal-header {
+    padding: 0.75rem;
+  }
+
+  .pa-modal-body {
+    padding: 0.75rem;
+  }
+
+  .modal-headline {
+    font-size: 0.95rem;
+  }
+
+  .stat-value {
+    font-size: 1.5rem;
+  }
+
+  .stat-card .stat-value {
+    font-size: 1.5rem;
+  }
+
+  .status-bar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.3rem;
+  }
+
+  .btn {
+    padding: 0.6rem 1rem;
+    font-size: 0.82rem;
+  }
+
+  .btn-large {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.85rem;
+  }
+
+  .report-card {
+    padding: 1rem;
+  }
+
+  .analytics-grid {
+    gap: 0.5rem;
+  }
+
+  .task-review-item {
+    padding: 0.75rem;
+  }
+
+  .funny-wrap {
+    padding: 0.5rem 0;
+  }
+
+  /* Task review stats: single column on very small */
+  #taskReviewStats {
+    grid-template-columns: 1fr !important;
+  }
+
+  .what-happened-list {
+    grid-template-columns: 1fr !important;
+  }
+
+  .time-hero-value {
+    font-size: 2rem;
+  }
+
+  .score-num {
+    font-size: 2.5rem;
+  }
 }

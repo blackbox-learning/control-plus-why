@@ -117,12 +117,21 @@ document.addEventListener('DOMContentLoaded', function () {
         const result = await apiPost('create-session', { mood, interests, tasks });
 
         if (result.success) {
-            storeSession({
+            const sessionData = {
                 sessionId: result.data.sessionId,
                 mood: result.data.mood,
                 interests: result.data.interests,
                 tasks: result.data.tasks,
-            });
+            };
+            storeSession(sessionData);
+
+            // Auto-launch desktop agent (non-blocking — starts tracking in background)
+            try {
+                await apiPost('agent-launch', { sessionId: sessionData.sessionId });
+            } catch (e) {
+                // Agent unavailable — fallback to manual mode on dashboard
+            }
+
             window.location.href = '/projects/procrastina-ai/prediction/';
         } else {
             showNotification('Failed: ' + result.error, 'error');

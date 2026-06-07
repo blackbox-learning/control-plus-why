@@ -62,6 +62,8 @@ class APIClient:
             {'success': False, 'error': '...'} on failure.
         """
         url = self._url(endpoint)
+        logger.info(f"API Request Sent: POST {url}")
+        logger.debug(f"API Payload: {payload}")
         try:
             response = requests.post(url, json=payload, timeout=10)
             response.raise_for_status()
@@ -69,23 +71,29 @@ class APIClient:
             # Reset failure counter on success
             self._consecutive_failures = 0
             self._is_online = True
-            logger.debug(f"POST {endpoint} → 200 OK")
+            logger.info(f"API Response Received: POST {endpoint} → {response.status_code} OK")
+            logger.debug(f"API Response Body: {data}")
             return data
 
         except requests.exceptions.ConnectionError:
+            logger.error(f"API Error: POST {endpoint} → Connection refused. Backend unreachable at {url}")
             self._handle_connection_failure(endpoint, payload)
             return {"success": False, "error": "Connection refused. Backend unreachable."}
 
         except requests.exceptions.Timeout:
+            logger.error(f"API Error: POST {endpoint} → Request timed out (10s)")
             self._handle_connection_failure(endpoint, payload)
             return {"success": False, "error": "Request timed out."}
 
         except requests.exceptions.HTTPError as e:
-            logger.warning(f"POST {endpoint} → HTTP {e.response.status_code}: {e.response.text}")
+            logger.error(
+                f"API Error: POST {endpoint} → HTTP {e.response.status_code}: "
+                f"{e.response.text[:500]}"
+            )
             return {"success": False, "error": f"HTTP {e.response.status_code}"}
 
         except Exception as e:
-            logger.error(f"POST {endpoint} → unexpected error: {e}")
+            logger.error(f"API Error: POST {endpoint} → unexpected error: {e}", exc_info=True)
             return {"success": False, "error": str(e)}
 
     def _handle_connection_failure(self, endpoint: str, payload: dict):
@@ -93,7 +101,7 @@ class APIClient:
         self._consecutive_failures += 1
         self._is_online = False
         logger.warning(
-            f"Connection failed ({self._consecutive_failures}/"
+            f"API Connection Failed ({self._consecutive_failures}/"
             f"{config.API_MAX_RETRIES_BEFORE_OFFLINE}): {endpoint}"
         )
         # Buffer log events (not start/end-session calls) for offline replay

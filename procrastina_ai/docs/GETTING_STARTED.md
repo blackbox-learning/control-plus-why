@@ -19,17 +19,17 @@ The motto: *"We build useless products with serious engineering. Some are funny.
 
 1. **Predicts how you'll procrastinate** — You tell it your mood, interests, and tasks. It uses real AI to predict exactly how you'll waste your day.
 
-2. **Tracks your distractions** — When you inevitably get distracted, you click "I Got Distracted" and tell it where you went. The AI roasts you for it.
+2. **Tracks your distractions** — A desktop agent auto-detects when you go idle for 10+ minutes and silently creates a "pending disappearance". No immediate popup — you explain it later at your convenience. You can pick a reason (and get an AI roast) or let it "Remain A Mystery".
 
 3. **Tracks real browser activity** — While you're on the dashboard, it tracks your actual mouse movements, clicks, and keystrokes to measure active vs idle time.
 
 4. **Desktop Agent (Windows)** — An optional Python desktop agent can run alongside you, tracking which applications you use (VS Code, Chrome, Spotify, etc.), detecting idle periods, and building an accurate activity timeline. The data appears in your end-of-day report. The agent auto-disconnects when you click "Stop My Day" — no need to stop it manually.
 
-5. **Idle-Return Popup** — When the agent detects you've been away for 10+ minutes and returns, a popup asks where you went. The AI generates contextual options based on your interests, and picks a reaction when you choose. It's like being roasted for disappearing without even clicking a button.
+5. **Pending Explanation Queue** — When the agent detects you've been idle for 10+ minutes, a pending disappearance is created silently in the background. A "🕵️ Unexplained: N" badge appears on the dashboard. You can review pending disappearances whenever you want, or wait until you click "Stop My Day" — which blocks until all are resolved. Each one can be explained (AI reaction generated) or left as a mystery.
 
-6. **Generates a daily report** — When you click "Stop My Day", the agent auto-disconnects and you get a report with real metrics (session length, active time, idle time), a procrastination score (0–100), achievements, and an AI-written summary.
+6. **Generates a daily report** — When you click "Stop My Day" (after reviewing your tasks), the agent auto-disconnects and you get a report with real metrics (session length, active time, idle time), an explained vs unexplained breakdown, longest disappearance, average duration, Task Completion Summary with progress bar, What Happened To The Day analytics, a procrastination score (0–100), achievements, and an AI-written summary that references your explanation patterns and completion percentage.
 
-7. **Makes excuses for you** — For every task you didn't finish, the AI generates absurd but oddly convincing reasons why you shouldn't have done it anyway.
+7. **Makes excuses for you** — For every task you didn't finish (In Progress, Partially Completed, Abandoned, Never Started), the AI generates absurd but oddly convincing reasons why you shouldn't have done it anyway. Completed tasks show a ✅ badge — no excuses needed.
 
 8. **Session Recovery** — If you close the browser accidentally, the app remembers your session. On your next visit, it checks the server and restores your active session so you don't lose progress.
 
@@ -55,7 +55,7 @@ It's a joke, but built with real technology.
 - **PA brand logo** — A progress circle permanently stuck at 87%
 - **Premium navigation** — Logo left, navigation center, actions right; hamburger menu on mobile
 - **Setup page** — Type tasks, click mood chips (7 options + custom input), click interest chips (7 options + add custom interests as tags)
-- **Prediction page** — Shows a timeline of your procrastination journey with a confidence meter and AI warning
+- **Prediction page** — Shows a full-day procrastination forecast: journey timeline with durations and risk/recovery probabilities, natural breaks (coffee, lunch, existential crisis), forecast metrics (productivity, distraction, completion scores), and AI warnings
 - **Dashboard** — Status bar (day active, tasks, distractions, top excuse), centered floating "I Got Distracted" button, stats grid, task list, leaderboard, AI observations
 - **Report page** — Gated until you click "Stop My Day". Shows session length, active/idle time, distractions, procrastination score, achievements, AI summary
 - **Funny Reasons page** — Cards showing AI-generated excuses for each task, with copy and regenerate buttons
@@ -148,32 +148,48 @@ To stop the server, press `Ctrl + C` in the terminal.
    - Type your tasks (e.g., "Record Video, Send Email, Code Review")
    - Click your mood (Motivated, Sleepy, Burned Out, Lazy, Focused, Confused, Chaotic) — or type a custom mood
    - Click your interests (YouTube, AI, Gaming, Movies, Tech, Instagram, Startups) — or press Enter to add custom interests as tags
-4. Click **"Start My Day"** to submit
-5. You'll see an AI **Prediction** of how you'll procrastinate — a timeline with a confidence meter
+4. Click **"Start My Day"** to submit — the desktop agent is automatically launched in the background
+5. You'll see an AI **Forecast** of your entire workday — a journey with durations, distraction risks, natural breaks, and funny metrics like "Chance of Finishing Every Task: 21%"
 6. Click "Accept My Fate" to go to the **Dashboard**
-7. The dashboard tracks your **real browser activity** (mouse, clicks, keyboard) and shows agent status if the desktop agent is running
-8. When you get distracted, click **"I Got Distracted"** — pick where you went from the modal, and the AI roasts you
-9. If the agent detects you've been **away for 10+ minutes**, an idle-return popup appears asking where you went — pick an option and the AI reacts
-10. When you're done for the day, click **"Stop My Day"** — the session ends, the agent auto-disconnects, and you're redirected to your **Report**
-11. Your report shows real metrics: session length, active time, idle time, distractions, score, achievements, and AI summary
-12. View **Funny Reasons** — AI-generated excuses for each task you didn't finish
+7. If the desktop agent connected successfully, the agent panel shows **CONNECTED** and the "I Got Distracted" button is hidden. The agent now tracks your active windows automatically.
+8. **Work normally.** The agent monitors your activity. After 10 minutes of no keyboard/mouse input, a **pending disappearance** is silently created in the background (no popup).
+9. A **"🕵️ Unexplained: N"** badge appears on the dashboard status bar. You can click **"🕵️ Review Unexplained"** at any time to open the resolution modal.
+10. In the modal, each pending disappearance shows its **duration** and **last active app**. You can:
+    - **Explain**: Pick a reason (or type a custom one) → AI generates a humorous reaction → saved as [EXPLAINED]
+    - **Remain A Mystery**: Skip it → marked as [UNEXPLAINED]
+11. This cycle repeats throughout the day — work, go idle, return, explain (or not).
+12. If the agent is unavailable, the dashboard shows **"Desktop Agent Not Connected — Manual Mode"** and the "I Got Distracted" button appears as a fallback.
+13. When you're done for the day, click **"Stop My Day"** — if pending disappearances exist, you'll be asked to resolve them first. After all resolved, the **Task Review Modal** appears — mark each task as Completed, In Progress, Partially Completed, Abandoned, or Never Started.
+14. After reviewing tasks, the session ends and you're redirected to your **Report**
+15. Your report shows real metrics: session length, active time, idle time, disappearances, **explained vs unexplained breakdown**, longest disappearance, average duration, most common reason, focus changes, top applications, **Task Completion Summary with progress bar**, **What Happened To The Day analytics**, score, achievements, and AI summary
+16. View **Funny Reasons** — completed tasks show a ✅ badge, AI-generated excuses only for incomplete tasks with status badges on every card
 
 ---
 
-## Using the Desktop Agent (Optional)
+## Using the Desktop Agent
 
-The desktop agent is a separate Python program that runs on your Windows computer and tracks which applications you use in real time. It sends data to the ProcrastinaAI backend, which enriches your report with actual app usage.
+The desktop agent is a Python program that runs on your Windows computer and tracks which applications you use in real time. It is **automatically launched** when you click "Start My Day" — no manual setup required. It sends data to the ProcrastinaAI backend, which enriches your dashboard and report with actual app usage.
 
 ### What It Tracks
 - **Active application** — which app is currently focused (VS Code, Chrome, Spotify, etc.)
 - **Window title** — the full title text (e.g., `views.py — procrastina_ai - Visual Studio Code`)
 - **Application switching** — every time you switch apps
-- **Idle periods** — when you haven't touched keyboard/mouse for 5+ minutes
+- **Idle periods** — when you haven't touched keyboard/mouse for 10+ minutes
 
 ### What It Does NOT Track
 No passwords, typed text, clipboard, screenshots, files, or browser history.
 
-### Setup
+### How It Works (Automatic)
+
+1. You click "Start My Day" on the Setup page
+2. The session is created and the agent is **auto-launched** as a background subprocess
+3. The agent connects to the backend and starts tracking your active windows
+4. The dashboard shows **CONNECTED** in the agent panel
+5. When you click "Stop My Day", the agent is **auto-disconnected** and its process is terminated
+
+### Manual Agent Launch (Fallback)
+
+If auto-launch fails, you can manually start the agent:
 
 1. Open a second terminal (keep the Django server running in the first one)
 2. Navigate to the agent folder and install its dependencies:
@@ -196,18 +212,24 @@ No passwords, typed text, clipboard, screenshots, files, or browser history.
 ### Example Output
 ```
 21:30:02 [INFO] Initial focus: code.exe — views.py — procrastina_ai - Visual Studio Code
-21:32:10 [DEBUG] Focus switch: code.exe → chrome.exe (after 128s)
-21:34:55 [DEBUG] Focus switch: chrome.exe → spotify.exe (after 165s)
-21:40:00 [INFO] No input for 300s — user is now idle.
-21:52:30 [INFO] Activity resumed. Idle lasted 750s.
+21:32:10 [INFO] Focus Changed: code.exe -> chrome.exe (after 128s)
+21:34:55 [INFO] Focus Changed: chrome.exe -> spotify.exe (after 165s)
+21:40:00 [INFO] Idle Started at 21:40:00 (last app: spotify.exe)
+21:52:30 [INFO] Idle Ended at 21:52:30 (duration: 750s)
 ```
 
 ### Report With Agent Data
 When the desktop agent sends data, your report additionally shows:
 - **Top Applications** — ranked by time spent (e.g., VS Code: 42 min, Chrome: 27 min)
 - **Category Breakdown** — Development: 45%, Entertainment: 20%, Communication: 15%
-- **Idle Summary** — each idle period with duration
+- **Idle Summary** — each idle period with duration and last active app
 - **Activity Timeline** — chronological flow (VS Code → Chrome → Idle → VS Code)
+- **Disappearances** — each disappearance with [EXPLAINED] or [MYSTERY] badge and AI reaction
+- **Explained vs Unexplained** — count cards showing how many you explained vs left as mysteries
+- **Longest Disappearance** — the longest idle period detected
+- **Average Duration** — average idle duration across all disappearances
+- **Focus Changes** — total number of app switches during the session
+- **Most Common Reason** — the distraction type that appeared most often
 
 ---
 
@@ -290,13 +312,13 @@ control-plus-why/
     ├── services.py        ← AI functions (talks to OpenRouter)
     ├── activity_services.py ← Activity tracking service layer
     ├── desktop_integration.py ← Validates and normalizes agent data
-    ├── urls.py            ← All page and API routes (25 endpoints)
+    ├── urls.py            ← All page and API routes (28 endpoints)
     ├── admin.py           ← Admin panel configuration
     ├── tests/             ← Test suite (39 tests across 5 files)
     ├── templates/         ← HTML files for each page
     ├── static/            ← CSS styles + JavaScript
-    ├── docs/              ← Technical documentation
-    └── DOCUMENTATION.md   ← Detailed technical documentation
+    ├── docs/              ← Technical documentation (DOCUMENTATION.md, GETTING_STARTED.md)
+    └── migrations/        ← Database migration files
 ```
 
 ---
@@ -323,7 +345,9 @@ control-plus-why/
 | **AgentPoller** | JavaScript module that polls the server every 15 seconds to check if the desktop agent is connected and to detect idle-return transitions. |
 | **SessionRecovery** | JavaScript module that restores an active session from the server if the browser was closed or the page was refreshed. |
 | **Idle-Return Popup** | A modal that appears when the agent detects the user returning from an idle period (10+ minutes away). Asks where they went with AI-generated options. |
+| **Pending Explanation Queue** | The system of auto-detected disappearances that sit as "pending" until the user explains them or marks them as a mystery. |
 | **Report Gating** | The report is locked until "Stop My Day" is clicked. Prevents premature report access. |
+| **Stop My Day Blocking** | When pending disappearances exist, "Stop My Day" is blocked until all are resolved (explained or skipped). |
 | **CSRF Token** | A security check that prevents other websites from making fake requests. |
 | **JSON** | A data format like `{"key": "value"}`. Used for sending data between browser and server. |
 | **UUID** | A unique ID like `a1b2c3d4-e5f6-7890-abcd-ef1234567890`. Every record gets one. |
@@ -340,12 +364,12 @@ Read the full developer documentation at: `procrastina_ai/DOCUMENTATION.md`
 
 It covers:
 - Complete database schema (8 models)
-- All 25 API endpoints with descriptions
+- All 28 API endpoints with descriptions
 - AI configuration and model fallback chain (5 AI functions)
 - Backend architecture and service layers
 - Activity tracking system and desktop agent
-- Idle-return popup flow and session recovery
+- Pending Explanation Queue workflow
+- Session recovery
 - Desktop agent architecture and file reference
 
-For the desktop agent architecture and API reference: `procrastina_ai/docs/FUTURE_DESKTOP_TRACKING.md`
 For the desktop agent usage and setup: `procrastina_agent/README.md`

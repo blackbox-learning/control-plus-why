@@ -2,12 +2,16 @@
 
 {% block pa_content %}
 <div class="prediction-wrap">
-    <h2>Your Inevitable Descent</h2>
-    <p class="subtitle" style="color:var(--text-muted); font-size:0.9rem;">We mapped your day. It's funny. It's accurate.</p>
+    <!-- Header -->
+    <h2>Today's Procrastination Forecast</h2>
+    <p class="subtitle" style="color:var(--text-muted); font-size:0.9rem;" id="forecastSubtitle">
+        The AI has consulted the stars. And your browser history.
+    </p>
 
-    <div class="forecast-pill">
-        <span>⏱ First distraction in:</span>
-        <strong id="forecastTime">~4 min</strong>
+    <!-- Forecast Summary Pill -->
+    <div class="forecast-pill" id="forecastPill" style="display:none;">
+        <span>🌦️</span>
+        <strong id="forecastSummaryText"></strong>
     </div>
 
     <!-- Confidence -->
@@ -22,7 +26,7 @@
         <p class="confidence-note">We've seen this before. Many times.</p>
     </div>
 
-    <!-- Timeline -->
+    <!-- Loading / Timeline -->
     <div class="timeline" id="timelineJourney">
         <div class="loading-state">
             <div class="loading-dots"><span></span><span></span><span></span></div>
@@ -30,11 +34,24 @@
         </div>
     </div>
 
-    <!-- AI Callout -->
-    <div class="ai-callout" id="aiCallout" style="display:none;">
-        <div class="ai-callout-head"><span>⚠️</span> AI Warning</div>
-        <p id="aiWarningText"></p>
+    <!-- Natural Breaks -->
+    <div id="naturalBreaksSection" style="display:none;">
+        <div class="fc-section-title">
+            <span>🧘</span> Natural Breaks (AI Recommended)
+        </div>
+        <div class="fc-grid" id="breaksGrid"></div>
     </div>
+
+    <!-- Forecast Metrics -->
+    <div id="metricsSection" style="display:none;">
+        <div class="fc-section-title">
+            <span>📊</span> Forecast Metrics
+        </div>
+        <div class="fc-metrics-grid" id="metricsGrid"></div>
+    </div>
+
+    <!-- AI Warnings -->
+    <div id="warningsSection" style="display:none;"></div>
 
     <!-- CTA -->
     <div id="predictionActions" style="display:none; text-align:center; margin-top:2rem;">
@@ -75,34 +92,122 @@ document.addEventListener('DOMContentLoaded', async function () {
         return;
     }
 
-    const steps = result.data.prediction;
-    const confidence = result.data.confidence || 94;
+    const data = result.data;
+    const journey = data.journey || [];
+    const naturalBreaks = data.naturalBreaks || [];
+    const metrics = data.metrics || {};
+    const warnings = data.warnings || [];
+    const confidence = data.confidence || 94;
+    const forecastSummary = data.forecastSummary || '';
 
+    // --- Forecast Summary ---
+    if (forecastSummary) {
+        document.getElementById('forecastPill').style.display = '';
+        document.getElementById('forecastSummaryText').textContent = forecastSummary;
+    }
+
+    // --- Confidence Bar ---
     document.getElementById('confidenceCard').style.display = '';
     document.getElementById('confidenceValue').textContent = confidence + '%';
     document.getElementById('confidenceFill').style.width = confidence + '%';
 
-    const mins = Math.floor(Math.random() * 8) + 2;
-    document.getElementById('forecastTime').textContent = `~${mins} min`;
-
+    // --- Journey Timeline ---
     timeline.innerHTML = '';
-    steps.forEach((step, i) => {
-        const isFinal = (i === steps.length - 1);
+    journey.forEach((step, i) => {
+        const isFinal = (i === journey.length - 1);
+        const icon = step.icon || (isFinal ? '💀' : (i + 1));
+        const riskClass = _riskClass(step.distractionRisk);
+        const recoveryClass = _recoveryClass(step.recoveryChance);
+
         const el = document.createElement('div');
         el.className = 'tl-step' + (isFinal ? ' final' : '');
-        el.innerHTML = isFinal
-            ? `<div class="tl-marker">💀</div><div class="tl-body"><h3>${step}</h3></div>`
-            : `<div class="tl-marker">${i + 1}</div><div class="tl-body"><h3>${step}</h3></div>`;
+        el.innerHTML = `
+            <div class="tl-marker">${icon}</div>
+            <div class="tl-body">
+                <h3>${step.title}</h3>
+                <div class="tl-meta">
+                    <span class="tl-duration">⏱ ${step.duration}</span>
+                    <span class="tl-risk ${riskClass}">Risk: ${step.distractionRisk}</span>
+                    <span class="tl-recovery ${recoveryClass}">Recovery: ${step.recoveryChance}</span>
+                </div>
+            </div>`;
         timeline.appendChild(el);
     });
 
-    const callout = document.getElementById('aiCallout');
-    callout.style.display = '';
-    const hours = (Math.random() * 3 + 2).toFixed(1);
-    document.getElementById('aiWarningText').innerHTML =
-        `You'll spend about ${hours} hours on everything except your work.<br>You'll call it "research." The AI disagrees.`;
+    // --- Natural Breaks ---
+    if (naturalBreaks.length > 0) {
+        document.getElementById('naturalBreaksSection').style.display = '';
+        const breaksGrid = document.getElementById('breaksGrid');
+        naturalBreaks.forEach(b => {
+            const card = document.createElement('div');
+            card.className = 'fc-break-card';
+            card.innerHTML = `
+                <span class="fc-break-icon">${b.icon || '☕'}</span>
+                <div>
+                    <div class="fc-break-title">${b.title}</div>
+                    <div class="fc-break-duration">${b.duration}</div>
+                </div>`;
+            breaksGrid.appendChild(card);
+        });
+    }
 
+    // --- Forecast Metrics ---
+    document.getElementById('metricsSection').style.display = '';
+    const metricsGrid = document.getElementById('metricsGrid');
+    const metricsList = [
+        { label: 'Predicted Productivity', value: metrics.productivity + '%', color: _metricColor(metrics.productivity, true) },
+        { label: 'Predicted Distractions', value: metrics.distraction + '%', color: _metricColor(metrics.distraction, false) },
+        { label: 'Chance Of Finishing', value: metrics.completion + '%', color: _metricColor(metrics.completion, true) },
+        { label: 'Most Likely Distraction', value: metrics.mainDistraction || 'Unknown', color: 'var(--accent)' },
+    ];
+    metricsList.forEach(m => {
+        const card = document.createElement('div');
+        card.className = 'fc-metric-card';
+        card.innerHTML = `
+            <div class="fc-metric-label">${m.label}</div>
+            <div class="fc-metric-value" style="color:${m.color}">${m.value}</div>`;
+        metricsGrid.appendChild(card);
+    });
+
+    // --- AI Warnings ---
+    if (warnings.length > 0) {
+        const warningsSection = document.getElementById('warningsSection');
+        warningsSection.style.display = '';
+        warnings.forEach(w => {
+            const callout = document.createElement('div');
+            callout.className = 'ai-callout';
+            callout.innerHTML = `
+                <div class="ai-callout-head"><span>⚠️</span> AI Warning</div>
+                <p>${w}</p>`;
+            warningsSection.appendChild(callout);
+        });
+    }
+
+    // --- Show CTA ---
     document.getElementById('predictionActions').style.display = '';
+
+    // --- Helper Functions ---
+    function _riskClass(risk) {
+        if (!risk) return '';
+        const r = risk.toLowerCase();
+        if (r.includes('extreme') || r.includes('very high')) return 'risk-high';
+        if (r.includes('high')) return 'risk-med';
+        return 'risk-low';
+    }
+
+    function _recoveryClass(chance) {
+        if (!chance) return '';
+        const c = chance.toLowerCase();
+        if (c.includes('impossible') || c.includes('questionable')) return 'recovery-low';
+        if (c.includes('low') || c.includes('moderate')) return 'recovery-med';
+        return 'recovery-high';
+    }
+
+    function _metricColor(val, higherIsBetter) {
+        if (typeof val !== 'number') return 'var(--accent)';
+        const good = higherIsBetter ? val >= 50 : val <= 50;
+        return good ? 'var(--success)' : 'var(--danger)';
+    }
 });
 </script>
 {% endblock %}

@@ -69,7 +69,68 @@
                         <div class="analytics-label">Tasks Planned</div>
                         <div class="analytics-num" id="aPlanned">0</div>
                     </div>
+                    <div class="analytics-card">
+                        <div class="analytics-label">Total Disappearances</div>
+                        <div class="analytics-num" id="aDisappearances">0</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-label">Explained</div>
+                        <div class="analytics-num" id="aExplained" style="color:var(--success);">0</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-label">Unexplained</div>
+                        <div class="analytics-num" id="aUnexplained" style="color:var(--warning);">0</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-label">Most Common Reason</div>
+                        <div class="analytics-num" id="aCommonReason" style="font-size:1.1rem;">—</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-label">Longest Disappearance</div>
+                        <div class="analytics-num" id="aLongestDis" style="font-size:1.1rem;">—</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-label">Average Duration</div>
+                        <div class="analytics-num" id="aAvgDuration" style="font-size:1.1rem;">—</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-label">Focus Changes</div>
+                        <div class="analytics-num" id="aFocusChanges">0</div>
+                    </div>
                 </div>
+            </div>
+
+            <!-- Task Completion Review -->
+            <div class="report-card" id="taskReviewCard" style="display:none;">
+                <div class="report-card-title">Task Completion Summary</div>
+                <div class="analytics-grid" id="taskReviewStats" style="grid-template-columns: repeat(3, 1fr); margin-bottom:1rem;"></div>
+                <div class="progress-wrap" id="taskReviewProgress" style="margin-bottom:1rem;"></div>
+                <div id="taskReviewList"></div>
+            </div>
+
+            <!-- Longest Disappearance -->
+            <div class="report-card" id="longestDisCard" style="display:none;">
+                <div class="report-card-title">Longest Disappearance</div>
+                <div class="analytics-grid" style="grid-template-columns: repeat(3, 1fr);">
+                    <div class="analytics-card">
+                        <div class="analytics-label">Duration</div>
+                        <div class="analytics-num" id="longestDisDuration" style="font-size:1.5rem;">—</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-label">Reason</div>
+                        <div class="analytics-text" id="longestDisReason" style="font-size:1rem;">—</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-label">Last Active App</div>
+                        <div class="analytics-text" id="longestDisApp" style="font-size:1rem;">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- What Happened To The Day -->
+            <div class="report-card" id="whatHappenedCard" style="display:none;">
+                <div class="report-card-title">What Happened To The Day?</div>
+                <div id="whatHappenedList"></div>
             </div>
 
             <!-- Desktop Agent: Top Applications (shown only with activity data) -->
@@ -88,6 +149,12 @@
             <div class="report-card" id="idleCard" style="display:none;">
                 <div class="report-card-title">Idle Summary</div>
                 <div id="idleList"></div>
+            </div>
+
+            <!-- Disappearances & AI Reactions -->
+            <div class="report-card" id="disappearancesCard" style="display:none;">
+                <div class="report-card-title">Disappearances &amp; AI Reactions</div>
+                <div id="disappearancesList"></div>
             </div>
 
             <!-- What Actually Happened -->
@@ -229,6 +296,70 @@ document.addEventListener('DOMContentLoaded', async function () {
     loading.style.display = 'none';
     content.style.display = '';
 
+    // Task Completion Review card
+    const taskStatuses = data.taskStatuses || {};
+    const hasTaskStatuses = Object.keys(taskStatuses).length > 0;
+    // Helper: get status from old or new format
+    function getTaskStatus(v) { return typeof v === 'object' && v !== null ? (v.status || v) : v; }
+    function getTaskScore(v) {
+        if (typeof v === 'object' && v !== null && 'completion_score' in v) return v.completion_score;
+        const scoreMap = {completed: 100, in_progress: 75, partially_completed: 50, abandoned: 25, never_started: 0};
+        return scoreMap[getTaskStatus(v)] || 0;
+    }
+    if (hasTaskStatuses) {
+        document.getElementById('taskReviewCard').style.display = '';
+        const statusConfig = {
+            completed: { label: 'Completed', color: 'var(--success)' },
+            in_progress: { label: 'In Progress', color: '#3b82f6' },
+            partially_completed: { label: 'Partially Completed', color: 'var(--warning)' },
+            abandoned: { label: 'Abandoned', color: 'var(--danger)' },
+            never_started: { label: 'Never Started', color: 'var(--text-muted)' },
+        };
+        const statusCounts = {};
+        const scores = [];
+        Object.values(taskStatuses).forEach(v => {
+            const s = getTaskStatus(v);
+            statusCounts[s] = (statusCounts[s] || 0) + 1;
+            scores.push(getTaskScore(v));
+        });
+        const totalTasks = Object.keys(taskStatuses).length;
+        const completedCount = statusCounts.completed || 0;
+        const completionPct = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+
+        // Stats cards
+        const statsEl = document.getElementById('taskReviewStats');
+        statsEl.innerHTML = '';
+        [
+            { label: 'Planned', val: totalTasks },
+            { label: 'Completed', val: completedCount, color: 'var(--success)' },
+            { label: 'In Progress', val: statusCounts.in_progress || 0, color: '#3b82f6' },
+            { label: 'Partially Done', val: statusCounts.partially_completed || 0, color: 'var(--warning)' },
+            { label: 'Abandoned', val: statusCounts.abandoned || 0, color: 'var(--danger)' },
+            { label: 'Never Started', val: statusCounts.never_started || 0, color: 'var(--text-muted)' },
+        ].forEach(s => {
+            const card = document.createElement('div');
+            card.className = 'analytics-card';
+            card.innerHTML = `<div class="analytics-label">${s.label}</div><div class="analytics-num" style="color:${s.color || 'var(--text)'}; font-size:1.5rem;">${s.val}</div>`;
+            statsEl.appendChild(card);
+        });
+
+        // Progress bar
+        const progressEl = document.getElementById('taskReviewProgress');
+        progressEl.innerHTML = `<div class="progress-track"><div class="progress-fill" style="width:${completionPct}%; background:${completionPct >= 70 ? 'var(--success)' : completionPct >= 40 ? 'var(--warning)' : 'var(--danger)'};"></div></div><span class="progress-note">${completionPct}% completion rate</span>`;
+
+        // Task list
+        const listEl = document.getElementById('taskReviewList');
+        listEl.innerHTML = '';
+        Object.entries(taskStatuses).forEach(([name, v]) => {
+            const status = getTaskStatus(v);
+            const cfg = statusConfig[status] || { label: status, color: 'var(--text-muted)' };
+            const row = document.createElement('div');
+            row.className = 'task-item';
+            row.innerHTML = `<span class="task-name">${name}</span><span class="task-status" style="background:${cfg.color}22; color:${cfg.color};">${cfg.label}</span>`;
+            listEl.appendChild(row);
+        });
+    }
+
     // Date
     const dateObj = new Date(reportDate + 'T00:00:00');
     document.getElementById('reportDate').textContent = dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -263,10 +394,110 @@ document.addEventListener('DOMContentLoaded', async function () {
         document.getElementById('aIdleTime').textContent = formatTime(idleSec);
         document.getElementById('aDistracted').textContent = disCount;
         document.getElementById('aPlanned').textContent = tasks.length;
+        document.getElementById('aDisappearances').textContent = disCount;
+
+        // Explained/Unexplained breakdown
+        const explained = disappearances.filter(d => d.explanationStatus === 'explained').length;
+        const unexplained = disappearances.filter(d => d.explanationStatus === 'unexplained').length;
+        document.getElementById('aExplained').textContent = explained;
+        document.getElementById('aUnexplained').textContent = unexplained;
+
+        document.getElementById('aCommonReason').textContent = commonExcuse.replace('_', ' ');
+
+        // Longest disappearance and average duration
+        const durations = disappearances.map(d => {
+            // Try to get idle duration from the disappearance (if it has context fields)
+            return d.idleDurationSeconds || 0;
+        }).filter(d => d > 0);
+
+        if (durations.length > 0) {
+            const longest = Math.max(...durations);
+            const avg = durations.reduce((a, b) => a + b, 0) / durations.length;
+            document.getElementById('aLongestDis').textContent = formatTime(longest);
+            document.getElementById('aAvgDuration').textContent = formatTime(avg);
+        } else {
+            document.getElementById('aLongestDis').textContent = '—';
+            document.getElementById('aAvgDuration').textContent = '—';
+        }
+
+        // Focus changes from activity summary
+        const focusChanges = (data.activitySummary && data.activitySummary.focusChanges) || 0;
+        document.getElementById('aFocusChanges').textContent = focusChanges;
+    }
+
+    // Disappearances & AI Reactions card
+    if (disCount > 0) {
+        document.getElementById('disappearancesCard').style.display = '';
+        const disListEl = document.getElementById('disappearancesList');
+        disListEl.innerHTML = '';
+        disappearances.forEach((d, i) => {
+            const row = document.createElement('div');
+            row.className = 'adv-item';
+            const reasonLabel = d.customLocation ? d.customLocation : d.type.replace('_', ' ');
+            const statusBadge = d.explanationStatus === 'unexplained'
+                ? '<span style="color:var(--warning); font-size:0.75rem; margin-left:0.5rem;">[MYSTERY]</span>'
+                : d.explanationStatus === 'explained'
+                    ? '<span style="color:var(--success); font-size:0.75rem; margin-left:0.5rem;">[EXPLAINED]</span>'
+                    : '';
+            row.innerHTML = `<span class="adv-label">#${i+1} ${reasonLabel}${statusBadge}</span><span class="adv-value" style="font-style:italic;">"${d.aiResponse.replace(/\n/g, '<br>')}"</span>`;
+            disListEl.appendChild(row);
+        });
     }
 
     // Desktop Agent Activity Sections
     const activitySummary = data.activitySummary;
+
+    // Longest Disappearance section
+    if (disCount > 0) {
+        const disWithDuration = disappearances.filter(d => d.idleDurationSeconds > 0);
+        if (disWithDuration.length > 0) {
+            const longest = disWithDuration.reduce((a, b) => a.idleDurationSeconds > b.idleDurationSeconds ? a : b);
+            document.getElementById('longestDisCard').style.display = '';
+            document.getElementById('longestDisDuration').textContent = formatTime(longest.idleDurationSeconds);
+            const reasonLabel = longest.customLocation || longest.type.replace('_', ' ');
+            document.getElementById('longestDisReason').textContent = reasonLabel.charAt(0).toUpperCase() + reasonLabel.slice(1);
+            document.getElementById('longestDisApp').textContent = longest.lastActiveApp || 'Unknown';
+        }
+    }
+
+    // What Happened To The Day section
+    const whatHappenedEl = document.getElementById('whatHappenedList');
+    const whatHappenedItems = [];
+    if (sessionLengthSec > 0) {
+        whatHappenedItems.push({ label: 'Total Session', value: formatTime(sessionLengthSec) });
+    }
+    if (activeSec > 0) {
+        whatHappenedItems.push({ label: 'Active Work', value: formatTime(activeSec) });
+    }
+    const realIdleSec = data.idleSeconds || 0;
+    if (realIdleSec > 0) {
+        whatHappenedItems.push({ label: 'Idle', value: formatTime(realIdleSec) });
+    }
+    // Per-app time from activity summary
+    if (activitySummary && activitySummary.topApps) {
+        activitySummary.topApps.forEach(app => {
+            if (app.totalSeconds >= 60) {
+                whatHappenedItems.push({ label: app.name, value: formatTime(app.totalSeconds) });
+            }
+        });
+    }
+    // Unexplained time
+    if (sessionLengthSec > 0 && activeSec > 0) {
+        const unexplained = Math.max(0, sessionLengthSec - activeSec - realIdleSec);
+        if (unexplained > 60) {
+            whatHappenedItems.push({ label: 'Unexplained', value: formatTime(unexplained) });
+        }
+    }
+    if (whatHappenedItems.length > 0) {
+        document.getElementById('whatHappenedCard').style.display = '';
+        whatHappenedEl.innerHTML = '';
+        whatHappenedItems.forEach(item => {
+            const row = document.createElement('div');
+            row.className = 'adv-item';
+            row.innerHTML = `<span class="adv-label">${item.label}</span><span class="adv-value">${item.value}</span>`;
+            whatHappenedEl.appendChild(row);
+        });
+    }
     if (data.hasActivityData && activitySummary) {
         const topApps = activitySummary.topApps || [];
         const categoryBreakdown = activitySummary.categoryBreakdown || {};
@@ -355,8 +586,13 @@ document.addEventListener('DOMContentLoaded', async function () {
         const turns = disappearances.map(d => `✓ ${d.type.replace('_', ' ')}`);
         advEl.innerHTML += `<div class="adv-item"><span class="adv-label">Detoured</span><div class="adv-value">${turns.join('<br>')}</div></div>`;
     }
-    const pctDone = tasks.length > 0 ? Math.round((tasksCompleted / tasks.length) * 100) : 0;
-    advEl.innerHTML += `<div class="adv-item"><span class="adv-label">Progress</span><div class="adv-value"><div>${tasksCompleted}/${tasks.length} tasks (${pctDone}%)</div><div class="progress-wrap"><div class="progress-track"><div class="progress-fill" style="width:${pctDone}%"></div></div><span class="progress-note">${pctDone < 30 ? 'Almost impressive.' : pctDone < 70 ? 'Not bad. Not good.' : 'Almost made it.'}</span></div></div></div>`;
+    // Use task statuses if available for more accurate progress
+    let actualCompleted = tasksCompleted;
+    if (hasTaskStatuses) {
+        actualCompleted = Object.values(taskStatuses).filter(s => s === 'completed').length;
+    }
+    const pctDone = tasks.length > 0 ? Math.round((actualCompleted / tasks.length) * 100) : 0;
+    advEl.innerHTML += `<div class="adv-item"><span class="adv-label">Progress</span><div class="adv-value"><div>${actualCompleted}/${tasks.length} tasks (${pctDone}%)</div><div class="progress-wrap"><div class="progress-track"><div class="progress-fill" style="width:${pctDone}%"></div></div><span class="progress-note">${pctDone < 30 ? 'Almost impressive.' : pctDone < 70 ? 'Not bad. Not good.' : 'Almost made it.'}</span></div></div></div>`;
 
     // Achievements
     const stats = { tasks, tasksCompleted, disCount, breakdown, score };

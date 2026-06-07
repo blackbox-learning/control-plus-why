@@ -33,6 +33,9 @@ from .models import (
     ApplicationUsage, WebsiteUsage, IdlePeriod, Report,
 )
 import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # ============================================================
@@ -374,7 +377,7 @@ def log_batch_events(activity_session_id, events):
             _update_usage_aggregates(activity_session, event)
             logged += 1
         except Exception as e:
-            print(f"Failed to log event: {e}")
+            logger.error(f"Failed to log event in batch: {e}", exc_info=True)
             failed += 1
 
     # Update event count and running active-seconds total
@@ -671,6 +674,11 @@ def get_session_analytics(session_id):
         type_counts[t] = type_counts.get(t, 0) + 1
     common_excuse = max(type_counts, key=type_counts.get) if type_counts else 'Unknown'
 
+    # Explanation status counts
+    explained_count = disappearances.filter(explanation_status='explained').count()
+    unexplained_count = disappearances.filter(explanation_status='unexplained').count()
+    pending_count = disappearances.filter(explanation_status='pending').count()
+
     # --- Activity data (future system) ---
     activity_sessions = session.activity_sessions.all()
     has_activity = activity_sessions.exists()
@@ -786,6 +794,9 @@ def get_session_analytics(session_id):
                 for d in disappearances
             ],
             'disCount': disappearances.count(),
+            'explainedCount': explained_count,
+            'unexplainedCount': unexplained_count,
+            'pendingCount': pending_count,
             'commonExcuse': common_excuse,
             'breakdown': type_counts,
             # Activity data
@@ -801,6 +812,8 @@ def get_session_analytics(session_id):
             'categoryBreakdown': category_breakdown,
             'idlePeriods': idle_periods,
             'activityTimeline': activity_timeline,
+            # Task completion data
+            'taskStatuses': session.task_statuses or {},
             # Computed
             'productivityRatio': round(productivity_ratio, 2),
             'distractionScore': distraction_score,
@@ -872,14 +885,71 @@ def generate_enhanced_report(session_id):
     }
 
 
+def _build_task_detail(analytics):
+    """Build task completion detail string from taskStatuses.
+    Supports both old format {task: "status"} and new format {task: {status, completion_score}}.
+    """
+    task_statuses = analytics.get('taskStatuses', {})
+    if not task_statuses:
+        return '', 0
+    from collections import Counter
+
+    def _get_status(v):
+        return v.get('status', v) if isinstance(v, dict) else v
+
+    def _get_score(v):
+        if isinstance(v, dict) and 'completion_score' in v:
+            return v['completion_score']
+        score_map = {'completed': 100, 'in_progress': 75, 'partially_completed': 50, 'abandoned': 25, 'never_started': 0}
+        return score_map.get(_get_status(v), 0)
+
+    statuses = [_get_status(v) for v in task_statuses.values()]
+    scores = [_get_score(v) for v in task_statuses.values()]
+    counts = Counter(statuses)
+    completion_percentage = round(sum(scores) / len(scores)) if scores else 0
+
+    status_labels = {
+        'completed': 'completed',
+        'in_progress': 'still in progress',
+        'partially_completed': 'partially completed',
+        'abandoned': 'abandoned',
+        'never_started': 'never started',
+    }
+    parts = []
+    for key, label in status_labels.items():
+        c = counts.get(key, 0)
+        if c > 0:
+            parts.append(f'{c} {label}')
+    detail = f'\nTask breakdown: {", ".join(parts)}.'
+    detail += f'\nOverall completion: {completion_percentage}%.'
+    task_lines = '\n'.join(
+        f'- {name}: {status_labels.get(_get_status(v), _get_status(v))} (score: {_get_score(v)})'
+        for name, v in task_statuses.items()
+    )
+    detail += f'\n{task_lines}'
+    return detail, completion_percentage
+
+
 def _build_manual_report_prompt(analytics):
     """Build AI prompt for manual-only report (current system)."""
+    explained = analytics.get('explainedCount', 0)
+    unexplained = analytics.get('unexplainedCount', 0)
+    explanation_text = ''
+    if analytics['disCount'] > 0:
+        explanation_text = f"\n- {explained} were explained, {unexplained} remain a mystery"
+    task_detail, completion_pct = _build_task_detail(analytics)
+
+    # Focus changes
+    focus_changes = analytics.get('focusChanges', 0)
+    focus_text = f'\nFocus changes: {focus_changes}' if focus_changes > 0 else ''
+
     return f"""You are a funny friend writing someone's end-of-day summary.
 
 Today's stats:
 - Tasks planned: {len(analytics['tasks'])}
-- Times they got distracted: {analytics['disCount']}
-- Go-to distraction: {analytics['commonExcuse']}
+- Overall completion: {completion_pct}%
+- Times they got distracted: {analytics['disCount']}{explanation_text}
+- Go-to distraction: {analytics['commonExcuse']}{focus_text}{task_detail}
 
 Write a SHORT summary (3-5 lines max).
 
@@ -890,6 +960,9 @@ RULES:
 - Be funny but kind
 - Tease them, don't make them feel bad
 - Add a tiny compliment or "respect" moment
+- Reference specific tasks and their statuses when possible
+- Mention the completion percentage naturally
+{'' if not unexplained else '- Mention the unexplained disappearances in a funny way (e.g., "classified incidents")'}
 
 Only return the summary. No intro, no labels."""
 
@@ -922,6 +995,26 @@ def _build_activity_report_prompt(analytics):
     idle_mins = int(analytics['idleSeconds'] / 60)
     session_mins = int(analytics['sessionLengthSeconds'] / 60)
 
+    # Explanation stats
+    explained = analytics.get('explainedCount', 0)
+    unexplained = analytics.get('unexplainedCount', 0)
+    explanation_text = ''
+    if analytics['disCount'] > 0:
+        explanation_text = f"\nDisappearances: {explained} explained, {unexplained} remain a mystery"
+
+    task_detail, completion_pct = _build_task_detail(analytics)
+
+    # Focus changes
+    focus_changes = analytics.get('focusChanges', 0)
+
+    # Activity timeline summary
+    timeline = analytics.get('activityTimeline', [])
+    timeline_text = ''
+    if timeline:
+        apps_used = set(item['name'] for item in timeline if item['type'] == 'app')
+        if apps_used:
+            timeline_text = f'\nApps used: {", ".join(list(apps_used)[:5])}'
+
     return f"""You are a funny friend writing someone's end-of-day report.
 You have REAL data about what they actually did today.
 
@@ -929,8 +1022,10 @@ Session: {session_mins} minutes total
 Active time: {active_mins} minutes
 Idle time: {idle_mins} minutes
 Tasks planned: {len(analytics['tasks'])}
-Manual distractions logged: {analytics['disCount']}
-Productivity ratio: {int(analytics['productivityRatio'] * 100)}%
+Overall task completion: {completion_pct}%
+Manual distractions logged: {analytics['disCount']}{explanation_text}
+Focus changes: {focus_changes}
+Productivity ratio: {int(analytics['productivityRatio'] * 100)}%{timeline_text}{task_detail}
 
 {top_apps_text}
 
@@ -942,10 +1037,13 @@ RULES:
 - Each line = one short sentence
 - Use line breaks between lines
 - Reference SPECIFIC apps/websites from the data (e.g., "You spent 45 min on YouTube")
+- Reference specific tasks and their statuses when possible
+- Mention the completion percentage naturally
 - Use simple words
 - Be funny but kind
 - Tease them about their actual behavior
 - End with a tiny compliment
+{'' if not unexplained else '- Mention the unexplained disappearances humorously (e.g., "classified incidents" or "mysterious vanishances")'}
 
 Only return the summary. No intro, no labels."""
 

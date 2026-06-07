@@ -8,13 +8,18 @@ This module contains:
 All views are function-based and well-commented for beginners.
 """
 
+import subprocess
+import sys
+import os
+import signal as os_signal
+
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 import json
-from .models import Session, Disappearance, Report
+from .models import Session, Disappearance, Report, Prediction
 from .services import (
     generate_prediction,
     generate_disappearance_response,
@@ -132,6 +137,9 @@ def api_generate_prediction(request):
     API endpoint: Generate procrastination prediction
 
     POST /projects/procrastina-ai/api/generate-prediction/
+
+    Generates a full-day procrastination forecast and stores it in the database.
+    Uses previous disappearance history (if any) to improve prediction accuracy.
     """
     try:
         data = json.loads(request.body)
@@ -145,17 +153,40 @@ def api_generate_prediction(request):
         except Session.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'Session not found'}, status=404)
 
-        result = generate_prediction(mood, interests, tasks)
+        # Get disappearance history for improved predictions
+        history = [
+            d.disappearance_type
+            for d in session.disappearances.all()[:5]
+        ]
+
+        result = generate_prediction(mood, interests, tasks, history)
 
         if not result['success']:
             return JsonResponse({'success': False, 'error': 'Failed to generate prediction'}, status=500)
+
+        # Store prediction in database for future report comparisons
+        prediction_data = result['data']
+        prediction_obj = Prediction.objects.create(
+            session=session,
+            forecast_summary=prediction_data.get('forecastSummary', ''),
+            journey=prediction_data.get('journey', []),
+            natural_breaks=prediction_data.get('naturalBreaks', []),
+            metrics=prediction_data.get('metrics', {}),
+            warnings=prediction_data.get('warnings', []),
+            confidence=result.get('confidence', 94),
+        )
 
         return JsonResponse({
             'success': True,
             'data': {
                 'sessionId': str(session.id),
-                'prediction': result['data'],
-                'confidence': result.get('confidence', 94)
+                'predictionId': str(prediction_obj.id),
+                'forecastSummary': prediction_data.get('forecastSummary', ''),
+                'journey': prediction_data.get('journey', []),
+                'naturalBreaks': prediction_data.get('naturalBreaks', []),
+                'metrics': prediction_data.get('metrics', {}),
+                'warnings': prediction_data.get('warnings', []),
+                'confidence': result.get('confidence', 94),
             }
         })
 
@@ -244,6 +275,15 @@ def api_generate_report(request):
         # Check if activity data exists for enhanced reporting
         has_activity = session.activity_sessions.exists()
 
+        # Use task_statuses from session if available (from Task Review step)
+        task_statuses = session.task_statuses or {}
+        if task_statuses:
+            # Support both old format {task: "status"} and new format {task: {status, completion_score}}
+            def _get_status(v):
+                return v.get('status', v) if isinstance(v, dict) else v
+            completed_count = sum(1 for v in task_statuses.values() if _get_status(v) == 'completed')
+            tasks_completed = completed_count
+
         if has_activity:
             # Use enhanced report with activity data
             enhanced = activity_services.generate_enhanced_report(session_id)
@@ -254,14 +294,16 @@ def api_generate_report(request):
             else:
                 # Fallback to manual
                 result = generate_daily_report(
-                    tasks_planned, tasks_completed, disappearances, common_excuse
+                    tasks_planned, tasks_completed, disappearances, common_excuse,
+                    task_statuses=session.task_statuses
                 )
                 score = result.get('score', 50)
                 ai_summary = result.get('data', 'Report generation failed.')
         else:
             # Manual-only report (current behavior)
             result = generate_daily_report(
-                tasks_planned, tasks_completed, disappearances, common_excuse
+                tasks_planned, tasks_completed, disappearances, common_excuse,
+                task_statuses=session.task_statuses
             )
             if not result['success']:
                 return JsonResponse({'success': False, 'error': 'Failed to generate report'}, status=500)
@@ -352,16 +394,29 @@ def api_end_session(request):
 
     POST /projects/procrastina-ai/api/end-session/
     Marks the session as inactive and stores final activity data.
+    BLOCKS if pending disappearances exist — forces resolution first.
     """
     try:
         data = json.loads(request.body)
         session_id = data.get('sessionId')
         active_seconds = data.get('activeSeconds', 0)
+        force_end = data.get('forceEnd', False)  # Allow forced end after resolution
 
         try:
             session = Session.objects.get(id=session_id)
         except Session.DoesNotExist:
             return JsonResponse({'success': False, 'error': 'Session not found'}, status=404)
+
+        # Check for pending disappearances (unless forceEnd is true)
+        if not force_end:
+            pending_count = session.disappearances.filter(explanation_status='pending').count()
+            if pending_count > 0:
+                return JsonResponse({
+                    'success': False,
+                    'hasPendingDisappearances': True,
+                    'pendingCount': pending_count,
+                    'error': f'You have {pending_count} unexplained disappearance(s). Please explain them before ending your day.'
+                }, status=400)
 
         session.is_active = False
         session.ended_at = timezone.now()
@@ -475,6 +530,8 @@ def api_get_session_data(request):
         'activeSeconds': session.active_seconds,
         'sessionLengthSeconds': session_length_seconds,
         'activityDataSufficient': session.activity_data_sufficient,
+        'taskStatuses': session.task_statuses or {},
+        'pendingDisappearanceCount': disappearances.filter(explanation_status='pending').count(),
         'disappearances': [
             {
                 'id': str(d.id),
@@ -482,6 +539,9 @@ def api_get_session_data(request):
                 'customLocation': d.custom_location,
                 'aiResponse': d.ai_response,
                 'createdAt': d.created_at.isoformat(),
+                'explanationStatus': d.explanation_status,
+                'idleDurationSeconds': d.idle_duration_seconds,
+                'lastActiveApp': d.last_active_app,
             }
             for d in disappearances
         ],
@@ -502,14 +562,29 @@ def api_get_session_data(request):
         'commonExcuse': common_excuse,
     }
 
+    # Calculate completion percentage from task statuses
+    _ts = session.task_statuses or {}
+    if _ts:
+        def _get_score(v):
+            if isinstance(v, dict) and 'completion_score' in v:
+                return v['completion_score']
+            _sm = {'completed': 100, 'in_progress': 75, 'partially_completed': 50, 'abandoned': 25, 'never_started': 0}
+            _st = v.get('status', v) if isinstance(v, dict) else v
+            return _sm.get(_st, 0)
+        _scores = [_get_score(v) for v in _ts.values()]
+        response_data['completionPercentage'] = round(sum(_scores) / len(_scores)) if _scores else 0
+    else:
+        response_data['completionPercentage'] = 0
+
+    # Always include agent status so dashboard knows if agent is running or needs launching
+    agent_status = desktop_integration.get_agent_status(session_id)
+    response_data['agentStatus'] = agent_status
+
     # Include activity summary data if available (from desktop agent)
     has_activity = session.activity_sessions.exists()
     response_data['hasActivityData'] = has_activity
 
     if has_activity:
-        # Get agent status and activity summary
-        agent_status = desktop_integration.get_agent_status(session_id)
-        response_data['agentStatus'] = agent_status
 
         # Get lightweight activity summary (top apps, categories)
         analytics = activity_services.get_session_analytics(session_id)
@@ -635,6 +710,219 @@ def api_save_return_reason(request):
 
 
 @require_http_methods(["GET"])
+def api_pending_disappearances(request):
+    """
+    GET /projects/procrastina-ai/api/pending-disappearances/?sessionId=xxx
+
+    Returns all pending (unexplained) disappearances for a session.
+    Used by the dashboard to show the explanation queue and by the
+    Stop My Day flow to force resolution.
+    """
+    session_id = request.GET.get('sessionId')
+    if not session_id:
+        return JsonResponse({'success': False, 'error': 'sessionId required'}, status=400)
+
+    try:
+        session = Session.objects.get(id=session_id)
+    except Session.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Session not found'}, status=404)
+
+    pending = session.disappearances.filter(explanation_status='pending').order_by('created_at')
+
+    return JsonResponse({
+        'success': True,
+        'data': {
+            'pendingCount': pending.count(),
+            'disappearances': [
+                {
+                    'id': str(d.id),
+                    'type': d.disappearance_type,
+                    'customLocation': d.custom_location,
+                    'idleDurationSeconds': d.idle_duration_seconds,
+                    'lastActiveApp': d.last_active_app,
+                    'lastWindowTitle': d.last_window_title,
+                    'createdAt': d.created_at.isoformat(),
+                }
+                for d in pending
+            ]
+        }
+    })
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_explain_disappearance(request):
+    """
+    POST /projects/procrastina-ai/api/explain-disappearance/
+
+    User explains a pending disappearance by selecting or typing a reason.
+    Generates an AI response and marks the disappearance as 'explained'.
+
+    Body:
+        disappearanceId (str): Disappearance UUID
+        reasonType (str): youtube, laptops, ai_tools, startup, comments, other
+        customReason (str, optional): Custom reason text if 'other'
+    """
+    try:
+        data = json.loads(request.body)
+        disappearance_id = data.get('disappearanceId')
+        reason_type = data.get('reasonType', 'other')
+        custom_reason = data.get('customReason', '')
+
+        if not disappearance_id:
+            return JsonResponse({'success': False, 'error': 'disappearanceId required'}, status=400)
+
+        try:
+            disappearance = Disappearance.objects.get(id=disappearance_id)
+        except Disappearance.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Disappearance not found'}, status=404)
+
+        session = disappearance.session
+
+        # Generate AI reaction
+        result = generate_disappearance_response(
+            reason_type, custom_reason or None, session.mood, session.interests
+        )
+
+        ai_response = result.get('data', 'You disappeared. The AI is impressed.') if result.get('success') else (
+            f"You were gone for {int(disappearance.idle_duration_seconds / 60)} minutes.\n"
+            f"The AI was too busy procrastinating to comment."
+        )
+
+        # Update the disappearance record
+        disappearance.disappearance_type = reason_type
+        disappearance.custom_location = custom_reason if reason_type == 'other' else ''
+        disappearance.ai_response = ai_response
+        disappearance.explanation_status = 'explained'
+        disappearance.explanation_timestamp = timezone.now()
+        disappearance.reason_source = 'custom_text' if (reason_type == 'other' and custom_reason) else 'user_selected'
+        disappearance.save()
+
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'disappearanceId': str(disappearance.id),
+                'aiResponse': ai_response,
+                'reasonType': reason_type,
+                'explanationStatus': 'explained',
+            }
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_skip_disappearance(request):
+    """
+    POST /projects/procrastina-ai/api/skip-disappearance/
+
+    User chooses to 'Remain A Mystery' for a pending disappearance.
+    Marks as 'unexplained' with no AI response.
+
+    Body:
+        disappearanceId (str): Disappearance UUID
+    """
+    try:
+        data = json.loads(request.body)
+        disappearance_id = data.get('disappearanceId')
+
+        if not disappearance_id:
+            return JsonResponse({'success': False, 'error': 'disappearanceId required'}, status=400)
+
+        try:
+            disappearance = Disappearance.objects.get(id=disappearance_id)
+        except Disappearance.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Disappearance not found'}, status=404)
+
+        # Mark as unexplained — remains a mystery
+        disappearance.explanation_status = 'unexplained'
+        disappearance.explanation_timestamp = timezone.now()
+        disappearance.disappearance_type = 'other'
+        disappearance.custom_location = 'Unknown — Remained a Mystery'
+        disappearance.ai_response = 'This disappearance remains classified. The AI respects your silence.'
+        disappearance.save()
+
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'disappearanceId': str(disappearance.id),
+                'explanationStatus': 'unexplained',
+                'message': 'This disappearance will remain a mystery.',
+            }
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_save_task_review(request):
+    """
+    POST /projects/procrastina-ai/api/save-task-review/
+
+    Saves task completion statuses during the Stop My Day flow.
+
+    Body:
+        sessionId (str): Session UUID
+        taskStatuses (dict): { task_name: {status, completion_score} }
+            status values: completed, in_progress, partially_completed,
+                           abandoned, never_started
+            completion_score: 100, 75, 50, 25, 0 (auto-assigned by frontend)
+    """
+    try:
+        data = json.loads(request.body)
+        session_id = data.get('sessionId')
+        task_statuses = data.get('taskStatuses', {})
+
+        if not session_id:
+            return JsonResponse({'success': False, 'error': 'sessionId required'}, status=400)
+
+        try:
+            session = Session.objects.get(id=session_id)
+        except Session.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Session not found'}, status=404)
+
+        session.task_statuses = task_statuses
+        session.save(update_fields=['task_statuses', 'updated_at'])
+
+        # Compute summary stats
+        total = len(task_statuses)
+        # Support both old format {task: "status"} and new format {task: {status, completion_score}}
+        def _get_status(v):
+            return v.get('status', v) if isinstance(v, dict) else v
+        def _get_score(v):
+            if isinstance(v, dict) and 'completion_score' in v:
+                return v['completion_score']
+            score_map = {'completed': 100, 'in_progress': 75, 'partially_completed': 50, 'abandoned': 25, 'never_started': 0}
+            return score_map.get(_get_status(v), 0)
+
+        completed = sum(1 for v in task_statuses.values() if _get_status(v) == 'completed')
+        scores = [_get_score(v) for v in task_statuses.values()]
+        pct = round(sum(scores) / len(scores)) if scores else 0
+
+        return JsonResponse({
+            'success': True,
+            'data': {
+                'tasksReviewed': total,
+                'tasksCompleted': completed,
+                'completionPercentage': pct,
+            }
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+
+@require_http_methods(["GET"])
 def api_recover_session(request):
     """
     GET /projects/procrastina-ai/api/recover-session/
@@ -663,6 +951,100 @@ def api_recover_session(request):
             'activeSeconds': session.active_seconds,
         }
     })
+
+
+# Track launched agent subprocess PIDs per session for management
+_agent_processes = {}  # session_id -> pid
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_agent_launch(request):
+    """
+    POST /projects/procrastina-ai/api/agent-launch/
+
+    Launches the desktop agent as a background subprocess.
+    Called by the dashboard 'Launch Agent' button.
+
+    Body:
+        sessionId (str): Parent Session UUID
+    """
+    try:
+        data = json.loads(request.body)
+        session_id = data.get('sessionId')
+
+        if not session_id:
+            return JsonResponse({'success': False, 'error': 'sessionId required'}, status=400)
+
+        try:
+            session = Session.objects.get(id=session_id)
+        except Session.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Session not found'}, status=404)
+
+        if not session.is_active:
+            return JsonResponse({'success': False, 'error': 'Session is already ended'}, status=400)
+
+        # Check if agent is already running for this session
+        existing_agent = session.activity_sessions.filter(is_active=True).first()
+        if existing_agent:
+            return JsonResponse({
+                'success': True,
+                'data': {
+                    'message': 'Agent is already running.',
+                    'activitySessionId': str(existing_agent.id),
+                    'alreadyRunning': True,
+                }
+            })
+
+        # Locate the agent script
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        agent_dir = os.path.join(project_root, 'procrastina_agent')
+        agent_script = os.path.join(agent_dir, 'agent.py')
+
+        if not os.path.isfile(agent_script):
+            return JsonResponse({
+                'success': False,
+                'error': f'Agent script not found at {agent_script}'
+            }, status=500)
+
+        # Create logs directory
+        logs_dir = os.path.join(agent_dir, 'logs')
+        os.makedirs(logs_dir, exist_ok=True)
+        log_file = os.path.join(logs_dir, 'agent.log')
+
+        # Launch agent as background subprocess
+        try:
+            log_fh = open(log_file, 'a', encoding='utf-8')
+            proc = subprocess.Popen(
+                [sys.executable, agent_script, str(session_id)],
+                cwd=agent_dir,
+                stdout=log_fh,
+                stderr=subprocess.STDOUT,
+                creationflags=getattr(subprocess, 'CREATE_NEW_PROCESS_GROUP', 0),
+            )
+            _agent_processes[session_id] = proc.pid
+            log_fh.close()
+
+            return JsonResponse({
+                'success': True,
+                'data': {
+                    'message': 'Agent launched successfully.',
+                    'pid': proc.pid,
+                    'logFile': log_file,
+                    'alreadyRunning': False,
+                }
+            }, status=201)
+
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'error': f'Failed to launch agent: {str(e)}'
+            }, status=500)
+
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
 
 
 @csrf_exempt
@@ -697,12 +1079,21 @@ def api_agent_disconnect(request):
             'activitySessionId': str(active_agent.id)
         })
 
+        # Kill the launched agent process if we launched it
+        pid = _agent_processes.pop(session_id, None)
+        if pid:
+            try:
+                os.kill(pid, os_signal.SIGTERM)
+            except OSError:
+                pass  # Process already exited
+
         return JsonResponse({
             'success': True,
             'data': {
                 'hadActiveAgent': True,
                 'activitySessionId': str(active_agent.id),
                 'endedCleanly': result.get('success', False),
+                'processKilled': pid is not None,
             }
         })
 
