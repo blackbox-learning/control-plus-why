@@ -15,21 +15,13 @@
 {% block pa_content %}
 <!-- Status Bar -->
 <div class="status-bar" id="statusBar">
-    <div class="status-item">
+    <div class="status-item status-item--indicator">
         <span class="status-dot active" id="statusDot"></span>
         <span id="statusLabel">Day In Progress</span>
     </div>
-    <div class="status-item">
-        Tasks: <span class="status-value" id="sbTasks">0</span>
-    </div>
-    <div class="status-item">
-        Distractions: <span class="status-value" id="sbDistractions">0</span>
-    </div>
-    <div class="status-item" id="pendingBadgeItem" style="display:none;">
-        <span style="color:var(--warning);">🕵️</span> Unexplained: <span class="status-value" id="sbPending" style="color:var(--warning);">0</span>
-    </div>
-    <div class="status-item">
-        Top Excuse: <span class="status-value" id="sbExcuse" style="font-family:var(--font-sans);">—</span>
+    <div class="status-bar__actions">
+        <a href="/projects/procrastina-ai/funny-reasons/" class="btn btn-secondary btn-sm">View Reasons</a>
+        <button class="btn btn-danger btn-sm" id="btnStopDay" onclick="stopMyDay()">Stop My Day</button>
     </div>
 </div>
 
@@ -37,19 +29,12 @@
 <div class="distracted-center" id="distractedCenter">
     <!-- Agent status label for fallback mode -->
     <p id="agentModeLabel" style="color:var(--text-muted); font-size:0.78rem; margin-bottom:0.5rem; display:none;">Desktop Agent Not Connected — Manual Mode</p>
-    <!-- <button class="btn-distracted-float" id="btnDistracted" onclick="openDistractionModal()">
-        🫣 I Got Distracted
-    </button> -->
     <!-- Fallback link shown when agent is connected (idle-return popup is primary) -->
     <a href="#" id="btnManualFallback" onclick="openDistractionModal(); return false;" style="display:none; color:var(--text-muted); font-size:0.82rem; text-decoration:underline; margin-top:0.3rem; cursor:pointer;">Log distraction manually</a>
     <!-- Pending disappearances review button -->
     <button class="btn btn-warning" id="btnReviewPending" onclick="openPendingResolutionModal()" style="display:none; margin-top:0.5rem;">
         🕵️ Review Unexplained (<span id="btnPendingCount">0</span>)
     </button>
-    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; justify-content:center;">
-        <a href="/projects/procrastina-ai/funny-reasons/" class="btn btn-secondary">View Reasons</a>
-        <button class="btn btn-danger" id="btnStopDay" onclick="stopMyDay()">🛑 Stop My Day</button>
-    </div>
 </div>
 
 <!-- Ended Banner -->
@@ -57,7 +42,7 @@
     <div class="ended-banner">
         <h3>Your day has ended.</h3>
         <p>Check your report or start fresh.</p>
-        <div style="display:flex; gap:0.5rem; justify-content:center;">
+        <div style="display:flex; gap:0.5rem; justify-content:center ;">
             <a href="/projects/procrastina-ai/report/" class="btn btn-primary">View Report</a>
             <a href="/projects/procrastina-ai/setup/" class="btn btn-secondary">New Day</a>
         </div>
@@ -107,7 +92,7 @@
             <div class="analytics-label">Connection</div>
             <div class="analytics-text" id="agentConnectionStatus" style="font-size:1.1rem; color:var(--text);">—</div>
         </div>
-        <div class="analytics-card">
+        <!-- <div class="analytics-card">
             <div class="analytics-label">Events</div>
             <div class="analytics-num" id="agentEvents" style="font-size:1.5rem;">0</div>
         </div>
@@ -118,7 +103,7 @@
         <div class="analytics-card">
             <div class="analytics-label">Last Activity</div>
             <div class="analytics-text" id="agentLastActivity" style="font-size:0.95rem; color:var(--text-secondary);">—</div>
-        </div>
+        </div> -->
     </div>
     <div id="agentWaiting" style="text-align:center; padding:1rem;">
         <p style="color:var(--text-muted); font-style:italic;">Desktop agent is not running.</p>
@@ -144,12 +129,12 @@
             <div class="empty-state"><p>Log some distractions first.</p></div>
         </div>
     </div>
-    <div class="dash-section wide">
+    <!-- <div class="dash-section wide">
         <div class="dash-section-title">AI Observations <span class="title-badge info">LIVE</span></div>
         <div id="aiResponsesList">
             <div class="empty-state"><p>Hit "I Got Distracted" to get roasted.</p></div>
         </div>
-    </div>
+    </div> -->
 </div>
 
 <!-- No session -->
@@ -823,7 +808,6 @@ async function finishDayFromTaskReview() {
 
     if (result.success) {
         sessionIsActive = false;
-        document.getElementById('btnDistracted').disabled = true;
         document.getElementById('btnStopDay').disabled = true;
         document.getElementById('sessionEndedBanner').style.display = '';
         showNotification("Day ended. Report time. 📊", "info");
@@ -881,7 +865,6 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     sessionIsActive = data.isActive !== false;
     if (!sessionIsActive) {
-        document.getElementById('btnDistracted').disabled = true;
         document.getElementById('btnStopDay').disabled = true;
         document.getElementById('sessionEndedBanner').style.display = '';
         document.getElementById('statusDot').classList.remove('active');
@@ -1055,11 +1038,11 @@ document.addEventListener('DOMContentLoaded', async function () {
     const btnDistracted = document.getElementById('btnDistracted');
     const btnFallback = document.getElementById('btnManualFallback');
     if (agentIsConnected) {
-        btnDistracted.style.display = 'none';
-        btnFallback.style.display = '';
+        if (btnDistracted) btnDistracted.style.display = 'none';
+        if (btnFallback) btnFallback.style.display = '';
     } else {
-        btnDistracted.style.display = '';
-        btnFallback.style.display = 'none';
+        if (btnDistracted) btnDistracted.style.display = '';
+        if (btnFallback) btnFallback.style.display = 'none';
         document.getElementById('agentModeLabel').style.display = '';
     }
 

@@ -18,16 +18,7 @@
         <div class="pa-nav-inner">
             <!-- Logo (Left) -->
             <a href="/projects/procrastina-ai/" class="pa-brand">
-                <div class="pa-logo-ring">
-                    <svg viewBox="0 0 36 36" class="pa-ring-svg">
-                        <circle cx="18" cy="18" r="16" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="3"/>
-                        <circle cx="18" cy="18" r="16" fill="none" stroke="var(--accent)" stroke-width="3"
-                            stroke-dasharray="87.96 100.53"
-                            stroke-linecap="round"
-                            transform="rotate(-90 18 18)"/>
-                    </svg>
-                    <span class="pa-logo-letter">PA</span>
-                </div>
+                <img src="{% static 'Assets/procrastina-ai-logo.png' %}" alt="ProcrastinaAI" class="pa-logo-img">
                 <div class="pa-brand-text">
                     <span class="pa-brand-name">ProcrastinaAI<sup class="pa-tm">™</sup></span>
                     <span class="pa-brand-tag">Professional Procrastination Management</span>
@@ -45,7 +36,10 @@
 
             <!-- Actions (Right) -->
             <div class="pa-nav-right">
-                <a href="/" class="pa-nav-exit">Ctrl+Why ↗</a>
+                <a href="/" class="pa-nav-exit">
+                    <span class="pa-nav-exit-label">Ctrl+Why</span>
+                    <span class="pa-nav-exit-arrow">↗</span>
+                </a>
                 <!-- Hamburger (Mobile) -->
                 <button class="pa-hamburger" id="hamburgerBtn" aria-label="Menu">
                     <span></span><span></span><span></span>
@@ -58,16 +52,8 @@
     <div class="pa-mobile-overlay" id="mobileOverlay"></div>
     <aside class="pa-mobile-menu" id="mobileMenu">
         <div class="pa-mobile-header">
-            <div class="pa-logo-ring small">
-                <svg viewBox="0 0 36 36" class="pa-ring-svg">
-                    <circle cx="18" cy="18" r="16" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="3"/>
-                    <circle cx="18" cy="18" r="16" fill="none" stroke="var(--accent)" stroke-width="3"
-                        stroke-dasharray="87.96 100.53"
-                        stroke-linecap="round"
-                        transform="rotate(-90 18 18)"/>
-                </svg>
-                <span class="pa-logo-letter">PA</span>
-            </div>
+            <img src="{% static 'Assets/procrastina-ai-logo.png' %}" alt="ProcrastinaAI" class="pa-logo-img small">
+            <span class="pa-mobile-brand-name">ProcrastinaAI<sup class="pa-tm">™</sup></span>
             <button class="pa-mobile-close" id="mobileCloseBtn">&times;</button>
         </div>
         <div class="pa-mobile-links" id="mobileLinks">
