@@ -1,0 +1,17 @@
+# ProcrastinaAI Django App — Requirements
+#
+# Install: pip install -r requirements.txt
+#
+# For the desktop agent, see procrastina_agent/requirements.txt
+
+# Django web framework
+django>=6.0.5
+
+# OpenAI SDK (used for OpenRouter API calls)
+openai>=4.28.0
+
+# Environment variable loading (.env files)
+python-dotenv>=1.0.0
+
+# HTTP requests
+requests>=2.32.0

@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <title>{% block title %}Ctrl+Why{% endblock %}</title>
     {% load static %}
     <link rel="stylesheet" href="{% static 'home/style.css' %}">
@@ -12,10 +13,11 @@
     <header>
         <nav>
             <a href="/" class="logo"><img src="{% static 'home/control why logo.png' %}" alt="Ctrl+Why" class="logo-img"><span class="logo-name">Ctrl+Why</span></a>
-            <ul>
-                <li><a href="/">Home</a></li>
-                <li><a href="/about/">About</a></li>
+            <ul class="nav-links">
+                <a href="/">Home</a>
+                <a href="/about/">About</a>
             </ul>
+            </div>
         </nav>
     </header>
 
@@ -24,6 +26,7 @@
     </main>
 
     <footer>
+        
         <p>Ctrl+Why &mdash; We build useless products with serious engineering.</p>
         <p>A project by <a href="https://www.blackboxlearning.in" target="_blank" rel="noopener">Blackbox Learning</a></p>
     </footer>

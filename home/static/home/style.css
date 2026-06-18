@@ -218,17 +218,35 @@ main {
 /* Footer */
 footer {
     border-top: 1px solid var(--border);
-    padding: 1.5rem 2rem;
+    padding: 2rem;
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: 1rem;
+    text-align: center;
+}
+
+.footer-links {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.footer-links a {
+    color: var(--text);
+    font-size: 0.9rem;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.footer-links a:hover {
+    color: var(--accent);
 }
 
 footer p {
     font-size: 0.8rem;
     color: var(--muted);
+    margin: 0;
 }
 
 footer a {

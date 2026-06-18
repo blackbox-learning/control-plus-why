@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>{% block title %}ProcrastinaAI{% endblock %}</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'procrastina_ai/style.css' %}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="pa-body">
+
+    <!-- Premium Navigation -->
+    <nav class="pa-nav">
+        <div class="pa-nav-inner">
+            <!-- Logo (Left) -->
+            <a href="/projects/procrastina-ai/" class="pa-brand">
+                <img src="{% static 'Assets/procrastina-ai-logo.png' %}" alt="ProcrastinaAI" class="pa-logo-img">
+                <div class="pa-brand-text">
+                    <span class="pa-brand-name">ProcrastinaAI<sup class="pa-tm">™</sup></span>
+                    <span class="pa-brand-tag">Professional Procrastination Management</span>
+                </div>
+            </a>
+
+            <!-- Navigation (Center) -->
+            <div class="pa-nav-center" id="navCenter">
+                {% block pa_nav %}
+                <a href="/projects/procrastina-ai/" class="pa-nav-link">Home</a>
+                <a href="/projects/procrastina-ai/dashboard/" class="pa-nav-link">Dashboard</a>
+                <a href="/projects/procrastina-ai/report/" class="pa-nav-link" id="navReportLink">Report</a>
+                {% endblock %}
+            </div>
+
+            <!-- Actions (Right) -->
+            <div class="pa-nav-right">
+                <a href="/" class="pa-nav-exit">
+                    <span class="pa-nav-exit-label">Ctrl+Why</span>
+                    <span class="pa-nav-exit-arrow">↗</span>
+                </a>
+                <!-- Hamburger (Mobile) -->
+                <button class="pa-hamburger" id="hamburgerBtn" aria-label="Menu">
+                    <span></span><span></span><span></span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Mobile Slide Menu -->
+    <div class="pa-mobile-overlay" id="mobileOverlay"></div>
+    <aside class="pa-mobile-menu" id="mobileMenu">
+        <div class="pa-mobile-header">
+            <img src="{% static 'Assets/procrastina-ai-logo.png' %}" alt="ProcrastinaAI" class="pa-logo-img small">
+            <span class="pa-mobile-brand-name">ProcrastinaAI<sup class="pa-tm">™</sup></span>
+            <button class="pa-mobile-close" id="mobileCloseBtn">&times;</button>
+        </div>
+        <div class="pa-mobile-links" id="mobileLinks">
+            {% block pa_mobile_nav %}
+            <a href="/projects/procrastina-ai/">Home</a>
+            <a href="/projects/procrastina-ai/dashboard/">Dashboard</a>
+            <a href="/projects/procrastina-ai/report/" id="mobileReportLink">Report</a>
+            <a href="/projects/procrastina-ai/funny-reasons/">Funny Reasons</a>
+            {% endblock %}
+            <hr class="pa-mobile-divider">
+            <a href="/" class="pa-mobile-exit">← Back to Ctrl+Why</a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="pa-main">
+        {% block pa_content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="pa-footer">
+        <p>ProcrastinaAI™ — Tracking what you didn't do since 2024</p>
+    </footer>
+
+    <script defer src="{% static 'procrastina_ai/script.js' %}"></script>
+    <script>
+    // Mobile menu toggle
+    (function() {
+        const btn = document.getElementById('hamburgerBtn');
+        const menu = document.getElementById('mobileMenu');
+        const overlay = document.getElementById('mobileOverlay');
+        const closeBtn = document.getElementById('mobileCloseBtn');
+
+        function openMenu() {
+            menu.classList.add('open');
+            overlay.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+        function closeMenu() {
+            menu.classList.remove('open');
+            overlay.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        btn.addEventListener('click', openMenu);
+        closeBtn.addEventListener('click', closeMenu);
+        overlay.addEventListener('click', closeMenu);
+
+        // Report gating: hide report nav link if session is active
+        const session = getSession();
+        if (session && session.sessionId) {
+            fetchSessionData().then(data => {
+                if (data && data.isActive !== false) {
+                    const navR = document.getElementById('navReportLink');
+                    const mobR = document.getElementById('mobileReportLink');
+                    if (navR) navR.style.display = 'none';
+                    if (mobR) mobR.style.display = 'none';
+                }
+            });
+        }
+    })();
+    </script>
+    {% block pa_scripts %}{% endblock %}
+</body>
+</html>
